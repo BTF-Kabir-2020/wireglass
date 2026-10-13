@@ -5,10 +5,14 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.1.0] - 2026-10-13
 
 ### Added
 
+- Initial Phase 0 skeleton: DNS (A/AAAA/CAA), TCP connect timing, TLS handshake
+  with negotiated ALPN/cipher/version and certificate info, HTTP/2 request, and
+  a real QUIC/HTTP-3 handshake probe that distinguishes *advertised* (`Alt-Svc`)
+  from *actually connected*.
 - **DNS delegation chain**: the report now walks the NS/SOA chain from the root
   toward the host zone and records each hop (zone, NS set, SOA MNAME, TTL).
 - **DNS DNSSEC raw records**: `DS` and `DNSKEY` records are collected, with an
@@ -29,14 +33,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - The DNS stage reports real data instead of `dnssec: "not_implemented"`.
 
-## [0.1.0] - 2026-10-13
-
-### Added
-
-- Initial Phase 0 skeleton: DNS (A/AAAA/CAA), TCP connect timing, TLS handshake
-  with negotiated ALPN/cipher/version and certificate info, HTTP/2 request, and
-  a real QUIC/HTTP-3 handshake probe that distinguishes *advertised* (`Alt-Svc`)
-  from *actually connected*.
-
-[Unreleased]: https://github.com/BTF-Kabir-2020/wireglass/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/BTF-Kabir-2020/wireglass/releases/tag/v0.1.0

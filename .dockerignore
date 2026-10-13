@@ -1,8 +1,16 @@
 /target
 .git
+.gitignore
+.gitattributes
+.github
+.editorconfig
 evidence/
 PLAN.md
 LAUNCH.md
 /reports
 *.report.html
+.agent-screenshots/
+Cargo.tomlorig
+*.orig
+*.bak
 .env

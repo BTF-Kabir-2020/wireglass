@@ -7,6 +7,8 @@
 *.yaml  text
 *.json  text
 *.md    text
+*.sh    text eol=lf
+Dockerfile text eol=lf
 
 *.png   binary
 *.jpg   binary
@@ -16,3 +18,7 @@
 
 # Generated; keep out of diffs and language stats.
 Cargo.lock linguist-generated=true
+
+# agent-browser capture artifacts (never shipped in archives)
+.agent-screenshots/** binary
+.agent-screenshots/** export-ignore

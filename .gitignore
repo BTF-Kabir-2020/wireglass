@@ -13,6 +13,9 @@
 /reports/
 *.report.html
 
+# agent-browser capture artifacts (local, never committed)
+.agent-screenshots/
+
 # Local stray/backup files
 Cargo.tomlorig
 *.orig

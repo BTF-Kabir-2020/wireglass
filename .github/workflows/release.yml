@@ -1,0 +1,77 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+*"
+  workflow_dispatch:
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: build (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            asset: wireglass-windows-x64.exe
+            binary: wireglass.exe
+          - os: ubuntu-latest
+            asset: wireglass-linux-x64
+            binary: wireglass
+          - os: macos-latest
+            asset: wireglass-macos-arm64
+            binary: wireglass
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Build
+        run: cargo build --release --locked --bin wireglass
+      - name: Stage
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          cp "target/release/${{ matrix.binary }}" "dist/${{ matrix.asset }}"
+          cp LICENSE-MIT LICENSE-APACHE README.md dist/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset }}
+          path: dist/*
+
+  publish:
+    name: publish release
+    needs: [build]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Assemble + checksums
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          find artifacts -type f -exec cp -f {} dist/ \;
+          cd dist
+          sha256sum wireglass-* > SHA256SUMS.txt
+          ls -la
+      - name: Publish
+        uses: softprops/action-gh-release@v2
+        with:
+          name: wireglass ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          files: dist/*
