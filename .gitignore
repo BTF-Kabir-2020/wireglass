@@ -1,0 +1,33 @@
+# Rust build output
+/target
+**/*.rs.bk
+*.pdb
+
+# Private planning + local run evidence (kept locally, never published)
+/PLAN.md
+/LAUNCH.md
+/evidence/
+
+# Generated reports (wireglass --html FILE / --render --out FILE)
+/*.html
+/reports/
+*.report.html
+
+# Local stray/backup files
+Cargo.tomlorig
+*.orig
+*.bak
+
+# Editor / OS cruft
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Local env / secrets
+.env
+.env.*
+!.env.example

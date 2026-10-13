@@ -1,0 +1,42 @@
+[package]
+name = "wireglass"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+description = "See what the connection actually does: a local-only CLI that walks DNS -> TCP -> TLS/ALPN -> HTTP/2 -> HTTP/3 and reports each step as a real, reproducible measurement."
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/BTF-Kabir-2020/wireglass"
+readme = "README.md"
+keywords = ["dns", "tls", "http3", "quic", "networking"]
+categories = ["command-line-utilities", "network-programming"]
+
+[dependencies]
+anyhow = "1.0.104"
+axum = { version = "0.8.9", optional = true }
+bytes = "1.12.1"
+clap = { version = "4.6.7", features = ["derive"] }
+h2 = "0.4.20"
+hickory-resolver = { version = "0.26.3", features = ["dnssec-ring"] }
+http = "1.5.0"
+quinn = "0.11.12"
+rustls = { version = "0.23.45", default-features = false, features = ["ring", "std", "tls12", "logging"] }
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+time = { version = "0.3.55", features = ["formatting"] }
+tokio = { version = "1.53.2", features = ["full"] }
+tokio-rustls = { version = "0.26.6", default-features = false, features = ["ring", "tls12", "logging"] }
+url = "2.5.8"
+webpki-roots = "1.0.9"
+x509-parser = "0.18.1"
+
+[dev-dependencies]
+rcgen = "0.14.10"
+
+[features]
+default = []
+server = ["axum"]
+
+[[bin]]
+name = "wireglassd"
+path = "src/bin/wireglassd.rs"
+required-features = ["server"]

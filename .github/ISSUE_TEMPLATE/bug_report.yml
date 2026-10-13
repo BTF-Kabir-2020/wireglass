@@ -1,0 +1,66 @@
+name: Bug report
+description: Something measured wrong, crashed, or was reported dishonestly.
+title: "bug: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. Please redact anything private from pasted output.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: input
+    id: command
+    attributes:
+      label: Command
+      description: The exact command you ran.
+      placeholder: "cargo run -- https://example.com"
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: Output
+      description: Trimmed JSON or terminal output. Redact secrets/private data.
+      render: json
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: WIREGLASS version
+      description: From `cargo run -- --version`.
+      placeholder: "0.1.0"
+    validations:
+      required: true
+  - type: input
+    id: rustc
+    attributes:
+      label: rustc version
+      description: Output of `rustc --version`.
+      placeholder: "rustc 1.85.0 (4d91de4e4 2025-02-17)"
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Linux
+        - macOS
+        - Windows
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: network
+    attributes:
+      label: Network context (optional)
+      description: Anything unusual about your network (VPN, proxy, filtered UDP/443, etc.).
+    validations:
+      required: false

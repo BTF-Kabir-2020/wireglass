@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>WIREGLASS — cover</title>
+<style>
+  :root{
+    --bg:#0d1117; --fg:#e6edf3; --muted:#8b949e;
+    --green:#3fb950; --border:#30363d; --amber:#d29922;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{width:100vw;height:100vh;overflow:hidden}
+  body{
+    background:
+      radial-gradient(120% 95% at 10% -12%, #12351f 0%, transparent 55%),
+      radial-gradient(130% 95% at 102% 122%, #0f2a3d 0%, transparent 55%),
+      var(--bg);
+    color:var(--fg);
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"DejaVu Sans Mono","Liberation Mono",monospace;
+    padding:6.4vh 6vw; display:flex; flex-direction:column; justify-content:space-between;
+  }
+  .top{display:flex;justify-content:space-between;align-items:flex-start}
+  .brand{font-weight:800;letter-spacing:.34em;font-size:2.9vh;color:var(--fg)}
+  .brand .cursor{color:var(--green)}
+  .repo{color:var(--muted);font-size:1.75vh}
+  h1{font-size:7.4vh;line-height:1.04;font-weight:800;letter-spacing:-.01em}
+  h1 .accent{color:var(--green)}
+  .sub{color:var(--muted);font-size:2.35vh;margin-top:1.8vh;max-width:66ch;line-height:1.5}
+  .path{display:flex;align-items:center;gap:1.1vw;margin-top:.5vh}
+  .node{border:1px solid var(--border);border-radius:14px;padding:1.5vh 1.35vw;background:rgba(22,27,34,.74);display:flex;flex-direction:column;gap:.6vh;min-width:9.5vw}
+  .node .n{font-size:2.5vh;font-weight:700}
+  .node .s{font-size:1.5vh;color:var(--green)}
+  .arrow{color:#3a4450;font-size:3.1vh}
+  .foot{display:flex;justify-content:space-between;align-items:center;color:var(--muted);font-size:1.85vh}
+  .badge{border:1px solid var(--amber);color:#f0d999;background:#3a1d0e;border-radius:999px;padding:.8vh 1.5vw;font-size:1.7vh;white-space:nowrap}
+</style>
+</head>
+<body>
+  <div class="top">
+    <div class="brand">WIREGLASS<span class="cursor">_</span></div>
+    <div class="repo">github.com/BTF-Kabir-2020/wireglass</div>
+  </div>
+
+  <div>
+    <h1>See what the connection<br><span class="accent">actually</span> does.</h1>
+    <div class="sub">A local-only Rust CLI that walks the real path — DNS → TCP → TLS (ALPN) → HTTP/2 → HTTP/3 — and reports each step as a directly measured, reproducible result.</div>
+  </div>
+
+  <div class="path">
+    <div class="node"><span class="n">DNS</span><span class="s">chain · DS · DNSKEY</span></div>
+    <span class="arrow">→</span>
+    <div class="node"><span class="n">TCP</span><span class="s">3 ms</span></div>
+    <span class="arrow">→</span>
+    <div class="node"><span class="n">TLS</span><span class="s">ALPN h2</span></div>
+    <span class="arrow">→</span>
+    <div class="node"><span class="n">HTTP/2</span><span class="s">200</span></div>
+    <span class="arrow">→</span>
+    <div class="node"><span class="n">HTTP/3</span><span class="s">QUIC · h3</span></div>
+  </div>
+
+  <div class="foot">
+    <div>local · offline · single binary · Rust</div>
+    <div class="badge">advertised ≠ connected</div>
+  </div>
+</body>
+</html>

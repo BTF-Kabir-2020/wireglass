@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>WIREGLASS — terminal preview</title>
+<style>
+  :root{--bg:#0b0f14;--term:#0d1117;--border:#30363d;--fg:#c9d1d9;--muted:#8b949e;
+        --green:#3fb950;--blue:#79c0ff;--cyan:#a5d6ff;--orange:#f0883e;}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{width:100vw;height:100vh;overflow:hidden}
+  body{
+    background:
+      radial-gradient(80% 120% at 12% -20%, #12351f 0%, transparent 55%),
+      radial-gradient(80% 120% at 100% 130%, #0f2a3d 0%, transparent 55%),
+      var(--bg);
+    display:flex;align-items:center;justify-content:center;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"DejaVu Sans Mono","Liberation Mono",monospace;
+  }
+  .term{
+    width:93vw;height:90vh;background:var(--term);
+    border:1px solid var(--border);border-radius:16px;overflow:hidden;
+    box-shadow:0 30px 80px rgba(0,0,0,.55);display:flex;flex-direction:column;
+  }
+  .bar{display:flex;align-items:center;gap:.9vh;padding:1.6vh 1.5vw;background:#161b22;border-bottom:1px solid var(--border)}
+  .dot{width:1.5vh;height:1.5vh;border-radius:50%}
+  .r{background:#ff5f56}.y{background:#ffbd2e}.g{background:#27c93f}
+  .title{margin-left:1vw;color:var(--muted);font-size:1.85vh}
+  pre{padding:2.4vh 2vw;font-size:2.05vh;line-height:1.62;color:var(--fg);white-space:pre;overflow:hidden}
+  .prompt{color:var(--green)}
+  .cmd{color:#e6edf3}
+  .k{color:var(--blue)}
+  .s{color:var(--cyan)}
+  .n{color:var(--orange)}
+  .ok{color:var(--green);font-weight:700}
+  .p{color:var(--muted)}
+  .dim{color:#6e7681}
+</style>
+</head>
+<body>
+  <div class="term">
+    <div class="bar">
+      <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+      <span class="title">wireglass — https://example.com</span>
+    </div>
+    <pre><span class="prompt">$</span> <span class="cmd">cargo run -- https://example.com</span>
+<span class="p">{</span>
+  <span class="k">"host"</span><span class="p">:</span> <span class="s">"example.com"</span><span class="p">,</span>
+  <span class="k">"resolved_ip"</span><span class="p">:</span> <span class="s">"104.20.23.154"</span><span class="p">,</span>
+  <span class="k">"dns"</span><span class="p">:</span> <span class="p">{</span>
+    <span class="k">"status"</span><span class="p">:</span> <span class="ok">"ok"</span><span class="p">,</span>
+    <span class="k">"chain"</span><span class="p">:</span> <span class="p">[</span><span class="s">"."</span><span class="p">,</span> <span class="s">"com."</span><span class="p">,</span> <span class="s">"example.com."</span><span class="p">],</span>
+    <span class="k">"ds"</span><span class="p">:</span> <span class="n">2</span><span class="p">,</span>  <span class="k">"dnskey"</span><span class="p">:</span> <span class="n">4</span><span class="p">,</span>  <span class="k">"dnssec"</span><span class="p">:</span> <span class="ok">"signed_unverified"</span>
+  <span class="p">},</span>
+  <span class="k">"tcp"</span><span class="p">:   {</span> <span class="k">"status"</span><span class="p">:</span> <span class="ok">"ok"</span><span class="p">,</span> <span class="k">"connect_ms"</span><span class="p">:</span> <span class="n">3</span> <span class="p">},</span>
+  <span class="k">"tls"</span><span class="p">:   {</span> <span class="k">"status"</span><span class="p">:</span> <span class="ok">"ok"</span><span class="p">,</span> <span class="k">"alpn"</span><span class="p">:</span> <span class="s">"h2"</span><span class="p">,</span> <span class="k">"protocol_version"</span><span class="p">:</span> <span class="s">"TLSv1_3"</span><span class="p">,</span>
+             <span class="k">"handshake_ms"</span><span class="p">:</span> <span class="n">186</span> <span class="p">},</span>
+  <span class="k">"http"</span><span class="p">:  {</span> <span class="k">"status"</span><span class="p">:</span> <span class="ok">"ok"</span><span class="p">,</span> <span class="k">"version"</span><span class="p">:</span> <span class="s">"2"</span><span class="p">,</span> <span class="k">"http_status"</span><span class="p">:</span> <span class="n">200</span><span class="p">,</span>
+             <span class="k">"alt_svc"</span><span class="p">:</span> <span class="s">"h3=\":443\"; ma=86400"</span> <span class="p">},</span>
+  <span class="k">"http3"</span><span class="p">: {</span> <span class="k">"status"</span><span class="p">:</span> <span class="ok">"ok"</span><span class="p">,</span> <span class="k">"advertised"</span><span class="p">:</span> <span class="n">true</span><span class="p">,</span> <span class="k">"negotiated"</span><span class="p">:</span> <span class="n">true</span> <span class="p">}</span>
+<span class="p">}</span>
+<span class="dim"># every value is a real measurement; failures are labeled, never guessed.</span></pre>
+  </div>
+</body>
+</html>

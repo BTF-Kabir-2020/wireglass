@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/BTF-Kabir-2020/wireglass/security/advisories/new
+    about: Please report security issues privately, not as a public issue.
+  - name: Questions and usage help
+    url: https://github.com/BTF-Kabir-2020/wireglass/discussions
+    about: Ask questions and share real-run reports here.

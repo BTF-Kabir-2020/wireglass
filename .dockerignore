@@ -1,0 +1,8 @@
+/target
+.git
+evidence/
+PLAN.md
+LAUNCH.md
+/reports
+*.report.html
+.env

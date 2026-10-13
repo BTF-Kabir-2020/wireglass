@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>WIREGLASS — banner</title>
+<style>
+  :root{--bg:#0d1117;--fg:#e6edf3;--muted:#8b949e;--green:#3fb950;--border:#30363d;--amber:#d29922;}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{width:100vw;height:100vh;overflow:hidden}
+  body{
+    background:
+      radial-gradient(90% 160% at 6% -30%, #12351f 0%, transparent 55%),
+      radial-gradient(90% 160% at 104% 140%, #0f2a3d 0%, transparent 55%),
+      var(--bg);
+    color:var(--fg);
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"DejaVu Sans Mono","Liberation Mono",monospace;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:0 5vw;
+  }
+  .left{display:flex;flex-direction:column;gap:1.6vh}
+  .brand{font-weight:800;letter-spacing:.34em;font-size:3.4vh;color:var(--fg)}
+  .brand .cursor{color:var(--green)}
+  .tag{color:var(--muted);font-size:2.2vh}
+  .tag b{color:var(--fg);font-weight:600}
+  .right{display:flex;align-items:center;gap:1.4vw}
+  .step{border:1px solid var(--border);border-radius:12px;padding:1.4vh 1.3vw;background:rgba(22,27,34,.72);font-size:2.2vh;font-weight:700}
+  .arrow{color:#3a4450;font-size:2.8vh}
+  .dot{color:var(--green)}
+</style>
+</head>
+<body>
+  <div class="left">
+    <div class="brand">WIREGLASS<span class="cursor">_</span></div>
+    <div class="tag"><b>See what the connection actually does.</b> &nbsp;DNS → TCP → TLS → HTTP/2 → HTTP/3</div>
+  </div>
+  <div class="right">
+    <span class="step">DNS</span><span class="arrow">→</span>
+    <span class="step">TCP</span><span class="arrow">→</span>
+    <span class="step">TLS</span><span class="arrow">→</span>
+    <span class="step">HTTP/2</span><span class="arrow">→</span>
+    <span class="step">HTTP/3<span class="dot">*</span></span>
+  </div>
+</body>
+</html>

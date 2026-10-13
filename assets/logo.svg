@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="WIREGLASS logo">
+  <rect width="512" height="512" rx="104" fill="#0d1117"/>
+  <rect x="14" y="14" width="484" height="484" rx="92" fill="none" stroke="#30363d" stroke-width="6"/>
+  <polyline points="92,356 200,356 200,156 312,156 312,356 420,356"
+            fill="none" stroke="#3fb950" stroke-width="24"
+            stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="92" cy="356" r="20" fill="#3fb950"/>
+  <circle cx="420" cy="356" r="20" fill="#3fb950"/>
+  <circle cx="256" cy="156" r="14" fill="#e6edf3"/>
+</svg>

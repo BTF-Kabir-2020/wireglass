@@ -1,0 +1,2 @@
+# Intentionally default rustfmt settings. The codebase is formatted with plain
+# `cargo fmt` so contributors and CI agree without extra configuration.
