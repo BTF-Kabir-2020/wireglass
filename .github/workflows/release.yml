@@ -69,7 +69,7 @@ jobs:
           sha256sum wireglass-* > SHA256SUMS.txt
           ls -la
       - name: Publish
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           name: wireglass ${{ github.ref_name }}
           draft: false
