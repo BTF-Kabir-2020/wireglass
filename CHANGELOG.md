@@ -5,6 +5,32 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Protocol-aware UDP diagnostics.** `--stun-target HOST:PORT` sends a real
+  STUN Binding request and accepts only a correlated Binding Success Response
+  with the expected magic cookie, transaction ID, declared message length, and
+  bounded attributes. `--repeat` and `--timeout` apply per measurement.
+- **Multi-target / multi-port probing.** Repeat `--stun-target` and/or
+  `--quic-target`; each target carries its own port. QUIC probes reuse the
+  existing HTTP/3 handshake instead of a second implementation.
+- **Structured UDP JSON.** UDP-only runs emit `udp_measurements`; URL runs keep
+  every existing field and append the same array. Categories are `success`,
+  `timeout`, `protocol_error`, and `resolution_error`. A timeout is never
+  reported as proof that UDP is blocked.
+- Deterministic local-UDP unit tests for valid Binding responses (with and
+  without attributes), mismatched transaction IDs, wrong cookie/type, malformed
+  and truncated lengths, arbitrary payloads, timeout, and DNS failure.
+
+### Changed
+
+- The HTTP/3 probe accepts a destination port, so URL scans now use the URL's
+  actual port instead of always testing 443.
+- `http3` JSON may include `failure_category` and `resolved_ip`; both fields are
+  optional, so older reports still deserialize.
+
 ## [0.1.0] - 2026-10-13
 
 ### Added
@@ -34,3 +60,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The DNS stage reports real data instead of `dnssec: "not_implemented"`.
 
 [0.1.0]: https://github.com/BTF-Kabir-2020/wireglass/releases/tag/v0.1.0
+[Unreleased]: https://github.com/BTF-Kabir-2020/wireglass/compare/v0.1.0...HEAD

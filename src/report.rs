@@ -174,6 +174,14 @@ impl RenderStage for crate::model::Http3Data {
         rows.push_str(&kv("ALPN", self.alpn.as_deref().unwrap_or("—")));
         rows.push_str(&kv("fallback used", yesno(self.fallback_used)));
         rows.push_str(&kv("duration", &format!("{} ms", self.duration_ms)));
+        rows.push_str(&kv(
+            "failure category",
+            self.failure_category.as_deref().unwrap_or("—"),
+        ));
+        rows.push_str(&kv(
+            "resolved IP",
+            self.resolved_ip.as_deref().unwrap_or("—"),
+        ));
         rows.push_str(&kv("note", &self.note));
         rows
     }
@@ -335,6 +343,7 @@ mod tests {
             },
             http3: Stage::Ok(Http3Data::default()),
             score: None,
+            udp_measurements: Vec::new(),
         }
     }
 

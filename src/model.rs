@@ -119,6 +119,10 @@ pub struct Http3Data {
     pub fallback_used: bool,
     pub duration_ms: u64,
     pub note: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub failure_category: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub resolved_ip: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -138,6 +142,32 @@ pub struct Score {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UdpMeasurement {
+    pub target: String,
+    pub resolved_ip: Option<String>,
+    pub transport: String,
+    pub port: u16,
+    pub elapsed_ms: u64,
+    pub attempts: u32,
+    pub successes: u32,
+    /// One of `success`, `timeout`, `protocol_error`, or `resolution_error`.
+    pub status: String,
+    /// Same category as `status` when the status is a failure; `null` on success.
+    #[serde(default)]
+    pub failure_category: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UdpReport {
+    pub tool: String,
+    pub version: String,
+    pub ran_at_utc: String,
+    pub udp_measurements: Vec<UdpMeasurement>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Report {
     pub tool: String,
     pub version: String,
@@ -153,6 +183,8 @@ pub struct Report {
     pub http3: Stage<Http3Data>,
     #[serde(default)]
     pub score: Option<Score>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub udp_measurements: Vec<UdpMeasurement>,
 }
 
 #[cfg(test)]
@@ -212,6 +244,7 @@ mod tests {
             http: Stage::Ok(HttpData::default()),
             http3: Stage::Ok(Http3Data::default()),
             score: None,
+            udp_measurements: Vec::new(),
         };
 
         let json = serde_json::to_string(&report).unwrap();
@@ -220,5 +253,22 @@ mod tests {
         assert_eq!(back.dns.as_ok().unwrap().a, vec!["93.184.216.34"]);
         assert!(back.tcp.error().is_some());
         assert_eq!(back.http3.status(), "ok");
+    }
+
+    #[test]
+    fn legacy_report_json_defaults_new_udp_fields() {
+        let legacy = r#"{
+            "tool":"wireglass","version":"0.1.0","target":"https://example.com",
+            "host":"example.com","port":443,"resolved_ip":null,"ran_at_utc":"",
+            "dns":{"status":"not_attempted","reason":"not run"},
+            "tcp":{"status":"not_attempted","reason":"not run"},
+            "tls":{"status":"not_attempted","reason":"not run"},
+            "http":{"status":"not_attempted","reason":"not run"},
+            "http3":{"status":"ok","advertised":false,"negotiated":false,
+                     "alpn":null,"fallback_used":false,"duration_ms":0,"note":""}
+        }"#;
+        let report: Report = serde_json::from_str(legacy).unwrap();
+        assert!(report.udp_measurements.is_empty());
+        assert!(report.http3.as_ok().unwrap().failure_category.is_none());
     }
 }

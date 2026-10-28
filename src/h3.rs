@@ -8,22 +8,52 @@ use crate::model::Http3Data;
 use crate::tls::root_store;
 
 pub async fn probe(ip: IpAddr, host: &str, advertised: bool, timeout: Duration) -> Http3Data {
+    probe_port(ip, host, 443, advertised, timeout).await
+}
+
+pub async fn probe_port(
+    ip: IpAddr,
+    host: &str,
+    port: u16,
+    advertised: bool,
+    timeout: Duration,
+) -> Http3Data {
     let start = Instant::now();
     let mut data = Http3Data {
         advertised,
         ..Default::default()
     };
 
-    match try_handshake(ip, host, timeout).await {
-        Ok(alpn) => {
+    match try_handshake(ip, host, port, timeout).await {
+        Ok(Some(alpn)) if alpn == "h3" => {
             data.negotiated = true;
-            data.alpn = alpn;
+            data.alpn = Some(alpn);
+            data.resolved_ip = Some(ip.to_string());
             data.note =
                 "real QUIC handshake completed; full HTTP/3 request not implemented in skeleton"
                     .to_string();
+            data.failure_category = None;
+        }
+        Ok(alpn) => {
+            data.alpn = alpn;
+            data.resolved_ip = Some(ip.to_string());
+            data.failure_category = Some("protocol_error".to_string());
+            data.note = format!(
+                "QUIC connected but negotiated unexpected ALPN: {:?}",
+                data.alpn
+            );
         }
         Err(e) => {
+            data.resolved_ip = Some(ip.to_string());
             data.fallback_used = advertised;
+            data.failure_category = Some(
+                if e.to_string().contains("quic handshake timed out") {
+                    "timeout"
+                } else {
+                    "protocol_error"
+                }
+                .to_string(),
+            );
             data.note = if advertised {
                 format!("Alt-Svc advertised h3 but QUIC handshake failed: {e}")
             } else {
@@ -36,7 +66,12 @@ pub async fn probe(ip: IpAddr, host: &str, advertised: bool, timeout: Duration) 
     data
 }
 
-async fn try_handshake(ip: IpAddr, host: &str, timeout: Duration) -> Result<Option<String>> {
+async fn try_handshake(
+    ip: IpAddr,
+    host: &str,
+    port: u16,
+    timeout: Duration,
+) -> Result<Option<String>> {
     let mut cfg = rustls::ClientConfig::builder()
         .with_root_certificates(root_store())
         .with_no_client_auth();
@@ -50,7 +85,7 @@ async fn try_handshake(ip: IpAddr, host: &str, timeout: Duration) -> Result<Opti
         .map_err(|e| anyhow!("udp endpoint bind failed: {e}"))?;
     endpoint.set_default_client_config(client_cfg);
 
-    let addr = SocketAddr::new(ip, 443);
+    let addr = SocketAddr::new(ip, port);
     let connecting = endpoint
         .connect(addr, host)
         .map_err(|e| anyhow!("quic connect init failed: {e}"))?;

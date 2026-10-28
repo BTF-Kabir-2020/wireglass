@@ -8,6 +8,7 @@ pub mod report;
 pub mod score;
 pub mod ssrf;
 pub mod tls;
+pub mod udp;
 
 use std::net::IpAddr;
 use std::time::Duration;
@@ -16,7 +17,7 @@ use time::OffsetDateTime;
 use time::format_description::well_known::Rfc3339;
 use url::Url;
 
-pub use model::{Report, Stage};
+pub use model::{Report, Stage, UdpMeasurement, UdpReport};
 
 pub fn pick_ip(ips: &[IpAddr]) -> Option<IpAddr> {
     ips.iter()
@@ -51,6 +52,7 @@ pub async fn run(url: &str, timeout_secs: u64, repeat: u32) -> Report {
         http: not_attempted(),
         http3: not_attempted(),
         score: None,
+        udp_measurements: Vec::new(),
     };
 
     let parsed = match Url::parse(url) {
@@ -168,7 +170,7 @@ pub async fn run(url: &str, timeout_secs: u64, repeat: u32) -> Report {
         .as_deref()
         .map(|s| s.to_ascii_lowercase().contains("h3"))
         .unwrap_or(false);
-    report.http3 = Stage::Ok(h3::probe(ip, &host, advertised, timeout).await);
+    report.http3 = Stage::Ok(h3::probe_port(ip, &host, port, advertised, timeout).await);
 
     report.score = Some(score::compute(&report));
     report

@@ -6,7 +6,7 @@
 Project page: https://ghourchiani.ir/projects/wireglass
 
 > **See what the connection actually does.**
-> A local-only Rust CLI that walks the real path of a connection — DNS → TCP → TLS (ALPN) → HTTP/2 → HTTP/3 — and reports each step as a directly measured, reproducible result.
+> A local-only Rust CLI that measures DNS → TCP → TLS (ALPN) → HTTP/2 → HTTP/3, with separate, protocol-aware UDP connectivity diagnostics for STUN and QUIC.
 
 ![WIREGLASS — See what the connection actually does](assets/og-cover.png)
 
@@ -14,15 +14,17 @@ Status: **Phase 1 — scoring + interpretive roast on top of the Phase 0 measure
 
 ## What it actually measures
 
-One command, one URL, one report:
+One command, one report:
 
 - **DNS** — A / AAAA records with real TTLs, CAA records, the NS/SOA **delegation chain** (root → … → host zone), raw **DS / DNSKEY** records, and explicit errors (via `hickory-resolver`).
 - **TCP** — real connect timing to a chosen address.
 - **TLS** — real handshake timing, negotiated protocol version, cipher suite, **negotiated ALPN**, and certificate subject/issuer/expiry (via `rustls` + `x509-parser`).
 - **HTTP/2** — a real request over the negotiated ALPN, capturing status, `server`, and `Alt-Svc`.
 - **HTTP/3** — a **real QUIC handshake** with ALPN `h3`. The report distinguishes *advertised* (`Alt-Svc`) from *actually connected*. A protocol being advertised is never reported as working.
+- **UDP/STUN** — a STUN Binding request with response type, magic cookie, transaction ID, message/attribute length validation, timeout, and repeat measurements.
+- **UDP/QUIC** — optional probes reuse the HTTP/3 QUIC handshake implementation and accept independently configurable host/port targets.
 
-Every failed measurement is reported with its error. Nothing is inferred or guessed. That honesty is the point.
+Every failed measurement is reported with its error and a precise status. A UDP timeout means only that no valid response was observed from that tested endpoint during the timeout; it does not prove UDP is blocked. DNS and TCP outcomes are recorded separately and never stand in for UDP evidence.
 
 ## Why it is different
 
@@ -30,7 +32,8 @@ Per `docs/competitors.md`, "a timeline" and "a reproducible report" alone are **
 
 1. Deep DNS + TLS + HTTP/2 + HTTP/3 in one reproducible output.
 2. Honest reporting of the **silent HTTP/3 downgrade** (advertised vs. actually connected).
-3. Local, offline, single-binary Rust — no third-party service sees your data.
+3. Protocol-aware STUN and QUIC measurements with structured failure categories.
+4. Local, offline, single-binary Rust — no third-party service sees your data.
 
 ## Run it
 
@@ -38,7 +41,16 @@ Per `docs/competitors.md`, "a timeline" and "a reproducible report" alone are **
 cargo run -- https://example.com
 cargo run -- https://example.com --compact
 cargo run -- https://example.com --timeout 15
-cargo run -- https://example.com --card card.svg --outdir evidence/example-com
+cargo run -- https://example.com --card card.svg evidence/example-com
+
+# Probe one or more STUN endpoints (repeat --stun-target for multiple targets)
+cargo run -- --stun-target stun.l.google.com:19302 --timeout 3 --repeat 3
+
+# Probe multiple QUIC/HTTP-3 targets (repeat --quic-target as needed)
+cargo run -- --quic-target example.com:443 --quic-target example.net:8443 --timeout 5 --repeat 2
+
+# Include one UDP diagnostic alongside the normal URL report
+cargo run -- https://example.com --stun-target stun.l.google.com:19302
 ```
 
 ### Docker
@@ -48,7 +60,9 @@ docker build -t wireglass .
 docker run --rm wireglass https://example.com
 ```
 
-Output is JSON on stdout (pretty by default).
+Output is JSON on stdout (pretty by default). UDP-only invocations emit a `UdpReport` with a `udp_measurements` array; combining UDP options with a URL adds that array to the existing report while retaining all current report fields. Each measurement includes `target`, `resolved_ip`, `transport`, `port`, `elapsed_ms`, `attempts`, `successes`, `status` (`success`, `timeout`, `protocol_error`, or `resolution_error`), `failure_category` (`null` on success, otherwise the same category), and an optional error description. STUN success requires a valid correlated Binding response; QUIC success requires the reused `h3` handshake to complete.
+
+Bracket IPv6 literals when providing a port, e.g. `--stun-target '[2001:db8::1]:3478'`.
 
 ### Verify the QUIC/HTTP-3 client path
 
@@ -83,10 +97,55 @@ Expected:
 
 ![Terminal preview of a wireglass run](assets/terminal-preview.png)
 
+## UDP example (trimmed)
+
+```json
+{
+  "tool": "wireglass",
+  "version": "0.1.0",
+  "ran_at_utc": "2026-10-28T00:00:00Z",
+  "udp_measurements": [
+    {
+      "target": "stun.example.net:3478",
+      "resolved_ip": "192.0.2.10",
+      "transport": "udp/stun-binding",
+      "port": 3478,
+      "elapsed_ms": 84,
+      "attempts": 3,
+      "successes": 3,
+      "status": "success",
+      "failure_category": null
+    },
+    {
+      "target": "stun.example.net:3479",
+      "resolved_ip": "192.0.2.10",
+      "transport": "udp/stun-binding",
+      "port": 3479,
+      "elapsed_ms": 3002,
+      "attempts": 3,
+      "successes": 0,
+      "status": "timeout",
+      "failure_category": "timeout",
+      "error": "no valid STUN response within 1s (3/3 attempts)"
+    }
+  ]
+}
+```
+
+A successful UDP probe is scoped to the tested endpoint/protocol/port. It is not evidence that other UDP ports, other hosts, or all traffic from the same network are reachable.
+
+## Interpreting UDP results
+
+Results describe only the configured endpoint, resolved address, protocol, port, and network path at the time of measurement. They are not proof of nationwide filtering status or of reachability to other hosts, ports, or UDP protocols. `timeout` specifically means no valid response arrived before the configured timeout; it is not classified as a protocol error and must not be read as proof that UDP is blocked. A DNS lookup or TCP connection succeeds independently and says nothing about arbitrary UDP reachability.
+
 ## Honest limitations (current skeleton)
 
 - **DNSSEC validation:** the delegation chain and raw `DS` / `DNSKEY` records are reported, but signatures are **not cryptographically validated**. `dnssec` is one of `unsigned`, `signed_unverified`, or `delegation_signed_no_dnskey` (the last means a parent `DS` existed but the resolver returned no `DNSKEY`). Full chain-of-trust verification is not implemented.
 - **HTTP/3 request/response:** only the QUIC handshake is implemented. The report says so explicitly instead of pretending.
+- **UDP/STUN authentication:** the response type, magic cookie, transaction ID, declared length, and attribute bounds are validated, but `MESSAGE-INTEGRITY` / `FINGERPRINT` are not. Authenticated STUN and TURN allocations are out of scope.
+- **One address per target:** UDP probes resolve the target once and test the preferred address (IPv4 first). They do not retry other A/AAAA answers, so a timeout on one address is not evidence about the others.
+- **No inference from other stages:** DNS, TCP, TLS, and HTTP outcomes are measured independently and never used to claim arbitrary UDP reachability. A timeout is a timeout, not a verdict on filtering.
+- **Single vantage point:** results describe this host, this resolver answer, this endpoint, and this moment. They do not prove nationwide filtering status.
 - **IPv4 preferred** for the connection step; IPv6-only hosts still resolve but are not connected to.
 
 ## Project layout
@@ -100,6 +159,7 @@ src/
   tls.rs     # TLS handshake, ALPN, certificate info
   http.rs    # HTTP/2 (h2) and HTTP/1.1 request
   h3.rs      # QUIC/HTTP-3 handshake probe
+  udp.rs     # STUN Binding + QUIC UDP diagnostics
 examples/
   quic_selfcheck.rs   # loopback proof that the QUIC client works
 docs/
@@ -129,8 +189,11 @@ Contributions are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) and th
 
 ## Status
 
-Early skeleton. The acceptance gate in `docs/evidence-plan.md` must pass before
-any new feature, image card, or public release work begins.
+Early skeleton. UDP diagnostics are implemented and covered by deterministic
+local tests, but the Phase 1 evidence gate in `docs/evidence-plan.md` (G1–G6) is
+still open. No release tag or public claim is made until that evidence is
+recorded. UDP results are measurements of a tested endpoint, not a conclusion
+about nationwide filtering.
 
 ## License
 
