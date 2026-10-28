@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-28
+
 ### Added
 
 - **Protocol-aware UDP diagnostics.** `--stun-target HOST:PORT` sends a real
@@ -60,4 +62,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The DNS stage reports real data instead of `dnssec: "not_implemented"`.
 
 [0.1.0]: https://github.com/BTF-Kabir-2020/wireglass/releases/tag/v0.1.0
-[Unreleased]: https://github.com/BTF-Kabir-2020/wireglass/compare/v0.1.0...HEAD
+[0.2.0]: https://github.com/BTF-Kabir-2020/wireglass/compare/v0.1.0...v0.2.0
+[Unreleased]: https://github.com/BTF-Kabir-2020/wireglass/compare/v0.2.0...HEAD
