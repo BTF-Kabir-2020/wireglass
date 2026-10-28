@@ -3,6 +3,8 @@
 [![CI](https://github.com/BTF-Kabir-2020/wireglass/actions/workflows/ci.yml/badge.svg)](https://github.com/BTF-Kabir-2020/wireglass/actions/workflows/ci.yml)
 [![license](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](#license)
 
+Project page: https://ghourchiani.ir/projects/wireglass
+
 > **See what the connection actually does.**
 > A local-only Rust CLI that walks the real path of a connection — DNS → TCP → TLS (ALPN) → HTTP/2 → HTTP/3 — and reports each step as a directly measured, reproducible result.
 
