@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Windows stack overflow when running `cargo run -- https://example.com`: boxed
+  the async futures polled by `run` and raised the main-thread stack size via
+  `.cargo/config.toml` (hickory's resolver can overflow the default 1 MB stack).
+
 ## [0.2.0] - 2026-10-28
 
 ### Added

@@ -38,7 +38,7 @@ pub async fn run(url: &str, timeout_secs: u64, repeat: u32) -> Report {
         .format(&Rfc3339)
         .unwrap_or_default();
 
-    let mut report = Report {
+    let mut report = Box::new(Report {
         tool: "wireglass".to_string(),
         version: env!("CARGO_PKG_VERSION").to_string(),
         target: url.to_string(),
@@ -53,7 +53,7 @@ pub async fn run(url: &str, timeout_secs: u64, repeat: u32) -> Report {
         http3: not_attempted(),
         score: None,
         udp_measurements: Vec::new(),
-    };
+    });
 
     let parsed = match Url::parse(url) {
         Ok(u) => u,
@@ -61,30 +61,31 @@ pub async fn run(url: &str, timeout_secs: u64, repeat: u32) -> Report {
             report.dns = Stage::Failed {
                 error: format!("invalid url: {e}"),
             };
-            return report;
+            return *report;
         }
     };
     let Some(host) = parsed.host_str().map(str::to_string) else {
         report.dns = Stage::Failed {
             error: "url has no host".to_string(),
         };
-        return report;
+        return *report;
     };
     let port = parsed.port_or_known_default().unwrap_or(443);
     let path = match parsed.path() {
-        "" => "/",
-        p => p,
+        "" => "/".to_string(),
+        p => p.to_string(),
     };
     report.host = host.clone();
     report.port = port;
 
-    let outcome = match dns::probe(&host).await {
+    drop(parsed);
+    let outcome = match Box::pin(dns::probe(&host)).await {
         Ok(o) => o,
         Err(e) => {
             report.dns = Stage::Failed {
                 error: e.to_string(),
             };
-            return report;
+            return *report;
         }
     };
     let ip = pick_ip(&outcome.ips);
@@ -93,7 +94,7 @@ pub async fn run(url: &str, timeout_secs: u64, repeat: u32) -> Report {
             report.tcp = Stage::Failed {
                 error: format!("ssrf guard: {e}"),
             };
-            return report;
+            return *report;
         }
     }
     report.resolved_ip = ip.map(|i| i.to_string());
@@ -103,7 +104,7 @@ pub async fn run(url: &str, timeout_secs: u64, repeat: u32) -> Report {
         report.tcp = Stage::Failed {
             error: "no IP address to connect to".to_string(),
         };
-        return report;
+        return *report;
     };
 
     let repeat = repeat.max(1);
@@ -112,22 +113,22 @@ pub async fn run(url: &str, timeout_secs: u64, repeat: u32) -> Report {
     let mut kept: Option<(tls::ClientTlsStream, model::TcpData, model::TlsData)> = None;
 
     for _ in 0..repeat {
-        let (stream, tcp_data) = match net::connect(ip, port, timeout).await {
+        let (stream, tcp_data) = match Box::pin(net::connect(ip, port, timeout)).await {
             Ok(v) => v,
             Err(e) => {
                 report.tcp = Stage::Failed {
                     error: e.to_string(),
                 };
-                return report;
+                return *report;
             }
         };
-        let (tls_stream, tls_data) = match tls::connect(stream, &host, timeout).await {
+        let (tls_stream, tls_data) = match Box::pin(tls::connect(stream, &host, timeout)).await {
             Ok(v) => v,
             Err(e) => {
                 report.tls = Stage::Failed {
                     error: e.to_string(),
                 };
-                return report;
+                return *report;
             }
         };
         connect_samples.push(tcp_data.connect_ms);
@@ -139,7 +140,7 @@ pub async fn run(url: &str, timeout_secs: u64, repeat: u32) -> Report {
         report.tcp = Stage::Failed {
             error: "no connection attempt was made".to_string(),
         };
-        return report;
+        return *report;
     };
     tcp_data.connect_ms = *connect_samples.first().unwrap_or(&tcp_data.connect_ms);
     tls_data.handshake_ms = *handshake_samples.first().unwrap_or(&tls_data.handshake_ms);
@@ -152,7 +153,7 @@ pub async fn run(url: &str, timeout_secs: u64, repeat: u32) -> Report {
     report.tcp = Stage::Ok(tcp_data);
     report.tls = Stage::Ok(tls_data);
 
-    let alt_svc = match http::get(tls_stream, &host, path, alpn_is_h2, timeout).await {
+    let alt_svc = match Box::pin(http::get(tls_stream, &host, &path, alpn_is_h2, timeout)).await {
         Ok(d) => {
             let alt = d.alt_svc.clone();
             report.http = Stage::Ok(d);
@@ -170,10 +171,10 @@ pub async fn run(url: &str, timeout_secs: u64, repeat: u32) -> Report {
         .as_deref()
         .map(|s| s.to_ascii_lowercase().contains("h3"))
         .unwrap_or(false);
-    report.http3 = Stage::Ok(h3::probe_port(ip, &host, port, advertised, timeout).await);
+    report.http3 = Stage::Ok(Box::pin(h3::probe_port(ip, &host, port, advertised, timeout)).await);
 
     report.score = Some(score::compute(&report));
-    report
+    *report
 }
 
 #[cfg(test)]

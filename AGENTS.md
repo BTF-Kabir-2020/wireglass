@@ -41,6 +41,8 @@ Always run `cargo fmt --all`, `cargo clippy --all-targets -- -D warnings`, and
 - Keep dependencies minimal; justify any new crate in the change description.
 - Add unit tests next to the code. Network tests belong in `examples/` and must
   never be required by `cargo test`.
+- Windows builds use a larger main-thread stack (see `.cargo/config.toml`); do
+  not remove it, hickory's resolver can overflow the default 1 MB stack.
 - Write comments sparingly and only where the reason is non-obvious.
 
 ## Do not commit
