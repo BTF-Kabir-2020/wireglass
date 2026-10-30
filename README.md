@@ -102,7 +102,7 @@ Expected:
 ```json
 {
   "tool": "wireglass",
-  "version": "0.1.0",
+  "version": "0.2.1",
   "ran_at_utc": "2026-10-28T00:00:00Z",
   "udp_measurements": [
     {
@@ -138,7 +138,7 @@ A successful UDP probe is scoped to the tested endpoint/protocol/port. It is not
 
 Results describe only the configured endpoint, resolved address, protocol, port, and network path at the time of measurement. They are not proof of nationwide filtering status or of reachability to other hosts, ports, or UDP protocols. `timeout` specifically means no valid response arrived before the configured timeout; it is not classified as a protocol error and must not be read as proof that UDP is blocked. A DNS lookup or TCP connection succeeds independently and says nothing about arbitrary UDP reachability.
 
-## Honest limitations (current skeleton)
+## Honest limitations
 
 - **DNSSEC validation:** the delegation chain and raw `DS` / `DNSKEY` records are reported, but signatures are **not cryptographically validated**. `dnssec` is one of `unsigned`, `signed_unverified`, or `delegation_signed_no_dnskey` (the last means a parent `DS` existed but the resolver returned no `DNSKEY`). Full chain-of-trust verification is not implemented.
 - **HTTP/3 request/response:** only the QUIC handshake is implemented. The report says so explicitly instead of pretending.
@@ -201,11 +201,13 @@ Contributions are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) and th
 
 ## Status
 
-Early skeleton. UDP diagnostics are implemented and covered by deterministic
-local tests, but the Phase 1 evidence gate in `docs/evidence-plan.md` (G1–G6) is
-still open. No release tag or public claim is made until that evidence is
-recorded. UDP results are measurements of a tested endpoint, not a conclusion
-about nationwide filtering.
+**v0.2.1 released.** Wireglass is in Phase 1: scoring + interpretive roast
+on top of the Phase 0 measurement engine.
+
+UDP diagnostics are implemented and covered by deterministic local tests.
+The Phase 1 evidence gate in `docs/evidence-plan.md` (G1-G6) remains open.
+UDP results are measurements of a tested endpoint, not a conclusion about
+nationwide filtering.
 
 ## License
 
