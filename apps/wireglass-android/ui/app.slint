@@ -602,19 +602,19 @@ export component MainWindow inherits Window {
                                 spacing: 8px;
                                 HorizontalLayout {
                                     spacing: 8px;
-                                    TouchArea {
-                                        clicked => { root.share-requested(); }
-                                        Rectangle {
-                                            background: root.run-btn;
-                                            border-radius: 8px;
-                                            border-width: 1px;
-                                            border-color: root.run-btn;
-                                            height: 44px;
-                                            HorizontalLayout { padding: 12px;
-                                                Text { text: "Share"; color: white; font-size: 13px; font-weight: 600; }
-                                            }
-                                        }
-                                    }
+                                    // TouchArea {
+                                    //     clicked => { root.share-requested(); }
+                                    //     Rectangle {
+                                    //         background: root.run-btn;
+                                    //         border-radius: 8px;
+                                    //         border-width: 1px;
+                                    //         border-color: root.run-btn;
+                                    //         height: 44px;
+                                    //         HorizontalLayout { padding: 12px;
+                                    //             Text { text: "Share"; color: white; font-size: 13px; font-weight: 600; }
+                                    //         }
+                                    //     }
+                                    // }
                                     TouchArea {
                                         clicked => { root.copy-json(); }
                                         Rectangle {
