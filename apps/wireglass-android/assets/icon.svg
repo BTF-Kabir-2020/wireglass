@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 512 512" role="img" aria-label="Wireglass">
+  <rect width="512" height="512" fill="#0d1117"/>
+  <polyline points="92,356 200,356 200,156 312,156 312,356 420,356"
+            fill="none" stroke="#3fb950" stroke-width="28"
+            stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="92" cy="356" r="22" fill="#3fb950"/>
+  <circle cx="420" cy="356" r="22" fill="#3fb950"/>
+  <circle cx="256" cy="156" r="16" fill="#e6edf3"/>
+</svg>

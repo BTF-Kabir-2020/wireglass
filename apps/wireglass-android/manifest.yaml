@@ -1,0 +1,16 @@
+android:
+  # Official Wireglass mark (from repo assets/logo.svg), square for Android mipmaps
+  icon: "assets/icon.png"
+  manifest:
+    package: com.wireglass.app
+    compile_sdk_version: 34
+    platform_build_version_code: 34
+    compile_sdk_version_codename: 14
+    platform_build_version_name: 14
+    uses_permission:
+      - name: android.permission.INTERNET
+    sdk:
+      min_sdk_version: 26
+      target_sdk_version: 34
+    application:
+      label: Wireglass

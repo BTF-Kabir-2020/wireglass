@@ -81,7 +81,8 @@ async fn try_handshake(
         .map_err(|e| anyhow!("quic client config: {e}"))?;
     let client_cfg = quinn::ClientConfig::new(Arc::new(qcc));
 
-    let mut endpoint = quinn::Endpoint::client("0.0.0.0:0".parse().unwrap())
+    let bind_addr = if ip.is_ipv6() { "[::]:0" } else { "0.0.0.0:0" };
+    let mut endpoint = quinn::Endpoint::client(bind_addr.parse().unwrap())
         .map_err(|e| anyhow!("udp endpoint bind failed: {e}"))?;
     endpoint.set_default_client_config(client_cfg);
 

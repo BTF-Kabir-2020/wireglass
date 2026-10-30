@@ -1,108 +1,108 @@
-# docs/evidence-plan.md — تبدیل یافته‌های رقبا به معیارهای آزمون (WIREGLASS)
+# docs/evidence-plan.md — turning competitor findings into testable criteria (WIREGLASS)
 
-> این سند `docs/competitors.md` را از «تحلیل» به «آزمون قابل‌اجرا» تبدیل می‌کند.
-> **قاعده‌ی طلایی:** هر ادعای محصول باید یک آزمونِ ردشدنی (falsifiable) داشته باشد و شاهدش ثبت شود. اندازه‌گیری ناموفق پنهان نمی‌شود؛ علامت‌گذاری می‌شود.
-> **گیت:** تا وقتی «معیار عبور مرحله اول» با شاهد اثبات نشود، قابلیت جدیدی به طرح اضافه نمی‌شود.
-
----
-
-## ۰. چطور شاهد ثبت می‌شود؟
-
-برای هر آزمون، در پوشه‌ی `evidence/` (بعد از ساخت ریپو) این‌ها ذخیره می‌شود:
-
-- `evidence/<date>-<host>-<test>.json` — خروجی خام JSON ابزار.
-- `evidence/<date>-<host>-<test>.log` — خروجی ترمینال همان اجرا (stdout/stderr).
-- `evidence/<date>-<host>-notes.md` — تاریخ اجرا، ورژن ابزار، و تفسیر موفق/ناموفق.
-
-هر آیتم زیر باید به یکی از این فایل‌ها ارجاع بدهد؛ ادعای بدون شاهد = رد.
+> This document turns `docs/competitors.md` from "analysis" into "runnable tests".
+> **Golden rule:** every product claim must have a falsifiable test and recorded evidence. Failed measurements are not hidden; they are marked.
+> **Gate:** no new feature is added to the plan until the "Phase 1 pass criteria" is proven with evidence.
 
 ---
 
-## ۱. معیار عبور مرحله اول — آزمون‌های دقیق
+## 0. How evidence is recorded
 
-هر ردیف: **ادعا → روش آزمون → شاهد لازم → شرط عبور.**
+For each test, store these under `evidence/` (after the repo is created):
 
-### G1 — بررسی DNS با نتیجه و خطای واقعی
-- **ادعا:** زنجیره‌ی DNS (chain/TTL/DNSSEC/CAA و رکوردهای A/AAAA) با resolver واقعی خوانده می‌شود، نه سطحی.
-- **آزمون:** اجرا روی دامنه‌ی سالم (مثل `example.com`) و روی دامنه‌ی خراب/ناموجود (مثل `nonexistent.invalid`).
-- **شاهد:** JSON حاوی `resolver_used`, `chain[]`, `ttl`, `dnssec`, `caa`, `a`, `aaaa`؛ و برای دامنه‌ی ناموجود یک **خطای صریح** (نه خروجی خالی).
-- **عبور:** هر دو حالت رفتار درست دارند؛ خطا با کد/پیام مشخص گزارش می‌شود.
-- **هدف تمایز:** `http-stat-rs`/`httptap` فقط «resolve شدن» را می‌بینند؛ ما زنجیره و DNSSEC/CAA را می‌بینیم.
+- `evidence/<date>-<host>-<test>.json` — raw JSON output of the tool.
+- `evidence/<date>-<host>-<test>.log` — terminal output of the same run (stdout/stderr).
+- `evidence/<date>-<host>-notes.md` — run date, tool version, and success/failure interpretation.
 
-### G2 — اندازه‌گیری مستقل TCP و TLS
-- **ادعا:** زمان اتصال TCP و handshake TLS به‌صورت جدا و مستند اندازه‌گیری می‌شوند.
-- **آزمون:** اجرای مکرر (حداقل ۵ بار) روی یک دامنه؛ ثبت پراکندگی.
-- **شاهد:** JSON با `tcp.connect_ms[]`, `tls.handshake_ms[]`, `tls.protocol`, `tls.cipher`, `tls.alpn`, `tls.cert_expiry`.
-- **عبور:** هر دو مرحله مقدار مستقل دارند؛ پراکندگی ثبت شده است.
-- **هدف تمایز:** عمق TLS شبیه `testssl.sh` اما در همان گزارش واحد.
-
-### G3 — تشخیص ALPN مذاکره‌شده (بدون استنتاج از هدر)
-- **ادعا:** ALPN از خود handshake خوانده می‌شود (`h2`/`http/1.1`)، نه از هدر پاسخ.
-- **آزمون:** دامنه‌ای که `h2` مذاکره می‌کند و دامنه‌ای که فقط `http/1.1` می‌دهد.
-- **شاهد:** `tls.alpn` برابر مقدار واقعی مذاکره‌شده؛ در log، شاهد handshake.
-- **عبور:** مقدار ALPN با هدر `Alt-Svc`/`Server` قابل‌تعویض نیست (آزمون منفی: هدری که ادعای چیزی خلاف ALPN واقعی دارد، نباید برنده شود).
-- **هدف تمایز:** تفکیک منبع حقیقت (handshake ≠ هدر).
-
-### G4 — آزمایش واقعی HTTP/2 و HTTP/3 با تفکیک تبلیغ از اتصال
-- **ادعا:** HTTP/3 به‌صورت **مذاکره‌ی واقعی QUIC** آزمایش می‌شود؛ «پشتیبانی» فقط از روی `Alt-Svc` نتیجه گرفته نمی‌شود.
-- **آزمون:** سه سناریو:
-  1. دامنه‌ای که واقعاً H3 دارد.
-  2. دامنه‌ای که `Alt-Svc: h3` تبلیغ می‌کند ولی اتصال QUIC برقرار نمی‌شود («افت بی‌صدا»).
-  3. دامنه‌ای که اصلاً H3 ندارد.
-- **شاهد:** برای هر سناریو فیلدهای `http2.negotiated`, `http3.advertised`, `http3.negotiated`, `http3.fallback_used`, و در صورت شکست `error`.
-- **عبور:** سه حالت از هم متمایز و درست برچسب می‌خورند؛ هیچ‌جا «موفق» هنگام شکست حدس زده نمی‌شود.
-- **هدف تمایز:** قوی‌ترین تمایز — `quicprobe` مسئله را دارد ولی فقط H3؛ اینجا ترکیب با بقیه‌ی مسیر.
-
-### G5 — خروجی JSON با ساختار مشخص + گزارش HTML قابل‌تولید مجدد
-- **ادعا:** خروجی ساختار پایدار و قابل‌diff دارد؛ گزارش HTML از همان JSON بازتولید می‌شود.
-- **آزمون:** دو اجرا روی همان ورودی → مقایسه‌ی ساختار (کلیدها)؛ ساخت مجدد HTML از JSON ذخیره‌شده.
-- **شاهد:** طرح‌واره‌ی JSON (کلیدهای ثابت)، و `report.html` ساخته‌شده از JSON ذخیره‌شده بدون اجرای مجدد اسکن.
-- **عبور:** کلیدهای ساختاری ثابت‌اند (مقادیر متغیر مجاز)؛ HTML فقط از JSON بازتولید می‌شود.
-- **توجه:** «قابل‌بازتولید» در `competitors.md` به‌عنوان تمایز **رد/ضعیف** خورده؛ اینجا فقط شرط کیفیت است، نه ادعای تمایز.
-
-### G6 — تست‌های قابل‌اجرا + README انگلیسی قابل‌اجرا برای دیگران
-- **ادعا:** یک توسعه‌دهنده‌ی دیگر می‌تواند پروژه را کلون و اجرا کند.
-- **آزمون:** دستورهای README روی یک محیط تازه (حداقل شبیه‌سازی‌شده) دنبال می‌شوند؛ `cargo test` سبز می‌شود.
-- **شاهد:** خروجی `cargo test`, `cargo build --release` و متن README.
-- **عبور:** بدون دانش پنهان اجرا می‌شود؛ تست‌ها پاس می‌شوند.
-- **هدف تمایز:** تمایز «تک‌باینری Rust، محلی، OSS» فقط اگر قابل‌اجرا باشد معنا دارد.
+Every item below must reference one of these files; a claim without evidence is rejected.
 
 ---
 
-## ۲. ادعاهای تمایز رقبا — آزمون ردشدنی
+## 1. Phase 1 pass criteria — exact tests
 
-از `competitors.md` بخش ۴ (سه نامزد قوی). هر ادعا باید با یک آزمون تأیید یا رد شود:
+Each row: **claim → test method → required evidence → pass condition.**
 
-| تمایز | فرضیه | آزمون ردشدنی | نتیجه‌ی قبولی |
+### G1 — DNS check with real result and real error
+- **Claim:** the DNS chain (chain/TTL/DNSSEC/CAA and A/AAAA records) is read with a real resolver, not superficially.
+- **Test:** run on a healthy domain (e.g. `example.com`) and on a broken/nonexistent domain (e.g. `nonexistent.invalid`).
+- **Evidence:** JSON containing `resolver_used`, `chain[]`, `ttl`, `dnssec`, `caa`, `a`, `aaaa`; and for the nonexistent domain an **explicit error** (not empty output).
+- **Pass:** both cases behave correctly; the error is reported with a specific code/message.
+- **Differentiation target:** `http-stat-rs`/`httptap` only see "resolved"; we see the chain and DNSSEC/CAA.
+
+### G2 — Independent TCP and TLS measurement
+- **Claim:** TCP connect time and TLS handshake time are measured separately and documented.
+- **Test:** run at least 5 times on one domain; record dispersion.
+- **Evidence:** JSON with `tcp.connect_ms[]`, `tls.handshake_ms[]`, `tls.protocol`, `tls.cipher`, `tls.alpn`, `tls.cert_expiry`.
+- **Pass:** both stages have independent values; dispersion is recorded.
+- **Differentiation target:** TLS depth similar to `testssl.sh` but in the same single report.
+
+### G3 — Negotiated ALPN (not inferred from headers)
+- **Claim:** ALPN is read from the handshake itself (`h2`/`http/1.1`), not from response headers.
+- **Test:** a domain that negotiates `h2` and a domain that only offers `http/1.1`.
+- **Evidence:** `tls.alpn` equals the actually negotiated value; handshake evidence in the log.
+- **Pass:** the ALPN value cannot be swapped by an `Alt-Svc`/`Server` header (negative test: a header claiming something different from the real ALPN must not win).
+- **Differentiation target:** separating the source of truth (handshake ≠ header).
+
+### G4 — Real HTTP/2 and HTTP/3 test with advertisement vs connection split
+- **Claim:** HTTP/3 is tested via a **real QUIC negotiation**; "support" is not inferred from `Alt-Svc` alone.
+- **Test:** three scenarios:
+  1. a domain that truly has H3.
+  2. a domain that advertises `Alt-Svc: h3` but the QUIC connection does not establish ("silent downgrade").
+  3. a domain with no H3 at all.
+- **Evidence:** for each scenario the fields `http2.negotiated`, `http3.advertised`, `http3.negotiated`, `http3.fallback_used`, and `error` on failure.
+- **Pass:** the three cases are distinct and correctly labeled; "success" is never guessed on failure.
+- **Differentiation target:** strongest differentiator — `quicprobe` has the issue but only for H3; here it is combined with the rest of the path.
+
+### G5 — Structured JSON output + reproducible HTML report
+- **Claim:** output has a stable, diffable structure; the HTML report is regenerated from the same JSON.
+- **Test:** two runs on the same input → compare structure (keys); rebuild HTML from saved JSON.
+- **Evidence:** JSON schema (stable keys), and `report.html` built from saved JSON without re-running the scan.
+- **Pass:** structural keys are stable (variable values allowed); HTML is rebuilt from JSON only.
+- **Note:** "reproducible" was marked weak/rejected in competitors.md; here it is only a quality condition, not a differentiation claim.
+
+### G6 — Runnable tests + English README runnable by others
+- **Claim:** another developer can clone and run the project.
+- **Test:** follow README commands on a fresh environment (at least simulated); `cargo test` is green.
+- **Evidence:** output of `cargo test`, `cargo build --release`, and the README text.
+- **Pass:** runs without hidden knowledge; tests pass.
+- **Differentiation target:** the "single Rust binary, local, OSS" differentiator only makes sense if it is runnable.
+
+---
+
+## 2. Competitor differentiation claims — falsifiable tests
+
+From competitors.md section 4 (three strong candidates). Each claim must be confirmed or rejected by a test:
+
+| Differentiator | Hypothesis | Falsifiable test | Acceptance result |
 |---|---|---|---|
-| DNS کامل + TLS + H3 در یک گزارش | هیچ ابزار واحدی هر سه را در یک خروجی نمی‌دهد | اجرای WIREGLASS روی یک دامنه → همه‌ی سه بخش در **یک** JSON | یک فایل، هر سه بخش، بدون ابزار دوم |
-| صداقت درباره‌ی افت بی‌صدای H3 | ابزارها شکست H3 را پنهان می‌کنند | سناریوی G4.2 (Alt-Svc بدون QUIC) | برچسب صریح «تبلیغ شد، برقرار نشد» |
-| گزارش تصویری محلی/OSS/تک‌باینری | خروجی رقبا متن یا وب-محور است | تولید SVG→PNG محلی، بدون شبکه بعد از اسکن | تصویر ۱۲۰۰×۶۳۰ آفلاین |
+| DNS + TLS + H3 in one report | No single tool gives all three in one output | Run WIREGLASS on one domain → all three parts in **one** JSON | One file, all three parts, no second tool |
+| Honesty about silent H3 downgrade | Tools hide H3 failures | Scenario G4.2 (Alt-Svc without QUIC) | Explicit label "advertised, not connected" |
+| Local/offline single binary + image report | Competitor output is text or web based | Generate SVG→PNG locally, offline after scan | 1200×630 image, offline |
 
-> **آزمون منفی روابط عمومی:** برای هر تمایز، یک دامنه‌ی نمونه انتخاب و نتیجه ثبت می‌شود تا ادعا با شاهدِ واقعی پشتیبانی شود، نه با توضیح.
-
----
-
-## ۳. ادعاهای ماتریس رقبا که باید **تأیید** شوند (نه فرض)
-
-`competitors.md` بر پایه‌ی مستندات عمومی است؛ پیش از تکیه بر آن، این‌ها با اجرای واقعی تأیید می‌شوند:
-
-- [ ] `http-stat-rs` واقعاً زنجیره‌ی DNS/DNSSEC/CAA را **ندارد** (اجرای آن و بررسی خروجی).
-- [ ] `http-stat-rs` واقعاً خروجی تصویری **ندارد**.
-- [ ] `httptap` واقعاً DNS را سطحی می‌بیند.
-- [ ] `quicprobe` واقعاً فقط H3 است و مسیر کامل ندارد.
-- [ ] DNSViz واقعاً وب-محور است و DNS/TLS/HTTP را با هم نمی‌دهد.
-
-اگر هرکدام **رد** شد، بخش مربوطه در طرح محصول (خصوصی) و `competitors.md` اصلاح می‌شود.
+> **Negative PR test:** for each differentiator, pick one sample domain and record the result so the claim is backed by real evidence, not explanation.
 
 ---
 
-## ۴. تعریف «انجام‌شده» برای مرحله اول
+## 3. Competitor matrix claims that must be **verified** (not assumed)
 
-مرحله اول Done است اگر و فقط اگر:
+competitors.md is based on public documentation; before relying on it, verify these by real execution:
 
-1. هر شش مورد G1..G6 با شاهد در `evidence/` بسته شوند.
-2. سه آزمون تمایز (بخش ۲) روی یک دامنه‌ی واقعی نتیجه‌ی قابل‌نمایش بدهند.
-3. هیچ ادعای بدون شاهد در طرح محصول/README نمانده باشد.
+- [ ] `http-stat-rs` really has no DNS chain/DNSSEC/CAA (run it and inspect output).
+- [ ] `http-stat-rs` really has no image report.
+- [ ] `httptap` really treats DNS shallowly.
+- [ ] `quicprobe` really is H3-only.
+- [ ] DNSViz really is web-only and does not combine TLS/HTTP.
 
-پس از این گیت: کارت تصویری نهایی و برنامه‌ی انتشار (طرح محصول — بخش توزیع، خصوصی) آغاز می‌شود.
+If any is disproven, update the product plan (private) and competitors.md.
+
+---
+
+## 4. Definition of "done" for Phase 1
+
+Phase 1 is done if and only if:
+
+1. All six G1..G6 are closed with evidence in `evidence/`.
+2. The three differentiator tests (section 2) produce showable results on a real domain.
+3. No claim without evidence remains in the product plan or README.
+
+After this gate: the final image card and the release plan (distribution section of the private product plan) begin.

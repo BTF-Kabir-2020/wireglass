@@ -124,8 +124,35 @@ pub struct Http3Data {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub resolved_ip: Option<String>,
 }
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct DotData {
+    pub port: u16,
+    pub alpn: Option<String>,
+    pub protocol_version: String,
+    pub cipher_suite: String,
+    pub cert_subject: String,
+    pub cert_issuer: String,
+    pub cert_not_after: String,
+    pub handshake_ms: u64,
+    pub note: String,
+}
+
+fn default_dot_stage() -> Stage<DotData> {
+    Stage::NotAttempted {
+        reason: "not run".to_string(),
+    }
+}
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct PortProbe {
+    pub port: u16,
+    pub protocol: String,
+    pub status: String,
+    pub ms: u64,
+    pub note: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ScoreItem {
     pub category: String,
     pub value: u8,
@@ -181,8 +208,12 @@ pub struct Report {
     pub tls: Stage<TlsData>,
     pub http: Stage<HttpData>,
     pub http3: Stage<Http3Data>,
+    #[serde(default = "default_dot_stage")]
+    pub dot: Stage<DotData>,
     #[serde(default)]
     pub score: Option<Score>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub ports: Vec<PortProbe>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub udp_measurements: Vec<UdpMeasurement>,
 }
@@ -243,7 +274,11 @@ mod tests {
             },
             http: Stage::Ok(HttpData::default()),
             http3: Stage::Ok(Http3Data::default()),
+            dot: Stage::NotAttempted {
+                reason: "not run".to_string(),
+            },
             score: None,
+            ports: Vec::new(),
             udp_measurements: Vec::new(),
         };
 

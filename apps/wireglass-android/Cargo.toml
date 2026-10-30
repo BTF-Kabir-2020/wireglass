@@ -1,0 +1,33 @@
+[package]
+name = "wireglass-android"
+version = "0.2.1"
+edition = "2021"
+publish = false
+description = "Wireglass Android UI (Slint) — Gate D shell"
+
+[lib]
+crate-type = ["cdylib"]
+path = "src/lib.rs"
+
+[dependencies]
+slint = { version = "1.18", default-features = false, features = ["backend-android-activity-06", "std", "compat-1-2", "accessibility"] }
+wireglass = { path = "../..", default-features = false }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"] }
+rustls = { version = "0.23", default-features = false, features = ["ring", "std"] }
+serde_json = "1"
+jni = "0.22"
+
+[build-dependencies]
+slint-build = "1.18"
+
+# Debug APKs stay large (symbols + unoptimized Skia) — that is OK for engineering.
+# Release must stay download-friendly: LTO + size opts + strip.
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+[profile.release-size]
+inherits = "release"
+opt-level = "z"

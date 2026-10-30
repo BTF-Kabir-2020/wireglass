@@ -5,6 +5,26 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] - 2026-10-30
+
+### Fixed
+
+- Android `normalize_target` now rejects non-http(s) schemes and hostless URLs.
+- Core `run()` validates URL scheme/user info; h3 uses IPv6 bind for IPv6 targets.
+- Port probe no longer falls back to `0.0.0.0`; reports DNS failure honestly.
+- HTTP/1.1 `body_bytes` counts only the response body.
+- Cancel is cooperative for remaining stages.
+- Android manifest reduced to `INTERNET` only.
+- `cargo fmt`/`clippy -D warnings` green for core and Android app.
+- Share button now falls back to clipboard when system share is unavailable.
+- About page links to GitHub and PouyaGH.ir (with copy).
+
+### Changed
+
+- CI runs format/clippy for Android app and a host check/test job.
+- Repository uses minimal Slint feature set for Android; accessibility enabled.
+- Android UI adds "Save JSON" export and redesigned About links.
+
 ## [Unreleased]
 
 ### Fixed
@@ -12,6 +32,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Windows stack overflow when running `cargo run -- https://example.com`: boxed
   the async futures polled by `run` and raised the main-thread stack size via
   `.cargo/config.toml` (hickory's resolver can overflow the default 1 MB stack).
+- Android `normalize_target` now rejects non-http(s) schemes (ftp/file/gopher) and
+  hostless URLs; matches documented behavior.
+- Core `run()` now validates URL scheme and rejects user info; h3 QUIC bind uses
+  IPv6 socket for IPv6 targets.
+- Port probe no longer falls back to `0.0.0.0` when DNS fails; reports resolution
+  failure honestly.
+- HTTP/1.1 `body_bytes` now counts only the response body (consistent with HTTP/2).
+- Cancel is cooperative: remaining stages are not executed after cancel.
+- Android manifest reduced to `INTERNET` only, matching permission policy.
+- `cargo fmt`/`clippy -D warnings` are green for core and Android app.
+
+### Changed
+
+- CI now runs format/clippy for the Android app and a host check/test job.
+- Repository is now a Cargo workspace (root + Android app) with a shared lockfile.
+- Android Slint dependency uses minimal feature set (accessibility enabled).
+- Android UI adds "Save JSON" export to the app files directory.
 
 ## [0.2.0] - 2026-10-28
 

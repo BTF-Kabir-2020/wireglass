@@ -1,0 +1,317 @@
+// Reusable UI pieces for Wireglass Android
+
+export struct StageRow {
+    name: string,
+    status: string,
+    detail: string,
+}
+
+export component StatusPill inherits Rectangle {
+    in property <string> status;
+    in property <color> fg;
+    in property <color> bg;
+    background: bg;
+    border-radius: 999px;
+    HorizontalLayout {
+        padding-left: 10px;
+        padding-right: 10px;
+        padding-top: 5px;
+        padding-bottom: 5px;
+        Text {
+            text: status;
+            color: fg;
+            font-size: 11px;
+            font-weight: 700;
+        }
+    }
+}
+
+// Readable stage card: title + pill on one row, detail wraps fully below (no clip).
+export component StageCard inherits Rectangle {
+    in property <string> name;
+    in property <string> status;
+    in property <string> detail;
+    in property <color> rail;
+    in property <color> pill-fg;
+    in property <color> pill-bg;
+    in property <color> panel;
+    in property <color> stroke;
+    in property <color> title-color;
+    in property <color> detail-color;
+
+    background: panel;
+    border-radius: 12px;
+    border-width: 1px;
+    border-color: stroke;
+    clip: false;
+    min-height: 72px;
+
+    HorizontalLayout {
+        spacing: 0px;
+        Rectangle {
+            width: 4px;
+            background: rail;
+            vertical-stretch: 1;
+        }
+        VerticalLayout {
+            padding: 14px;
+            spacing: 10px;
+            horizontal-stretch: 1;
+            width: 100%;
+
+            HorizontalLayout {
+                spacing: 10px;
+                alignment: start;
+                Text {
+                    text: name;
+                    color: title-color;
+                    font-size: 16px;
+                    font-weight: 700;
+                    vertical-alignment: center;
+                    wrap: no-wrap;
+                }
+                Rectangle { horizontal-stretch: 1; background: transparent; min-width: 8px; }
+                StatusPill {
+                    status: root.status;
+                    fg: root.pill-fg;
+                    bg: root.pill-bg;
+                }
+            }
+            Text {
+                text: detail;
+                color: detail-color;
+                font-size: 13px;
+                wrap: word-wrap;
+            }
+        }
+    }
+}
+
+export component PrimaryButton inherits TouchArea {
+    in property <string> label;
+    in property <color> bg;
+    in property <bool> busy: false;
+    height: 48px;
+    Rectangle {
+        background: root.busy ? #2a3542 : root.bg;
+        border-radius: 12px;
+        height: 100%;
+        width: 100%;
+        Text {
+            text: root.label;
+            color: white;
+            font-size: 16px;
+            font-weight: 700;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+    }
+}
+
+export component BottomNav inherits Rectangle {
+    callback home();
+    callback check();
+    callback about();
+    callback help();
+    in property <string> screen;
+    in property <color> panel;
+    in property <color> stroke;
+    in property <color> accent;
+    in property <color> mute;
+
+    height: 58px;
+    background: panel;
+    border-width: 1px;
+    border-color: stroke;
+    
+
+    HorizontalLayout {
+        padding-left: 8px;
+        padding-right: 8px;
+        padding-top: 4px;
+        padding-bottom: 4px;
+        spacing: 4px;
+        alignment: stretch;
+
+        TouchArea {
+            horizontal-stretch: 1;
+            clicked => { root.home(); }
+            VerticalLayout {
+                alignment: center;
+                spacing: 4px;
+                Text {
+                    text: "Home";
+                    color: root.screen == "home" ? root.accent : root.mute;
+                    font-size: 12px;
+                    font-weight: root.screen == "home" ? 700 : 500;
+                    horizontal-alignment: center;
+                }
+                HorizontalLayout {
+                    alignment: center;
+                    Rectangle {
+                        width: 24px;
+                        height: 3px;
+                        border-radius: 2px;
+                        background: root.screen == "home" ? root.accent : transparent;
+                    }
+                }
+            }
+        }
+
+        TouchArea {
+            horizontal-stretch: 1;
+            clicked => { root.check(); }
+            VerticalLayout {
+                alignment: center;
+                spacing: 4px;
+                Text {
+                    text: "Check";
+                    color: root.screen == "run" ? root.accent : root.mute;
+                    font-size: 12px;
+                    font-weight: root.screen == "run" ? 700 : 500;
+                    horizontal-alignment: center;
+                }
+                HorizontalLayout {
+                    alignment: center;
+                    Rectangle {
+                        width: 24px;
+                        height: 3px;
+                        border-radius: 2px;
+                        background: root.screen == "run" ? root.accent : transparent;
+                    }
+                }
+            }
+        }
+
+        TouchArea {
+            horizontal-stretch: 1;
+            clicked => { root.help(); }
+            VerticalLayout {
+                alignment: center;
+                spacing: 4px;
+                Text {
+                    text: "Help";
+                    color: root.screen == "help" ? root.accent : root.mute;
+                    font-size: 12px;
+                    font-weight: root.screen == "help" ? 700 : 500;
+                    horizontal-alignment: center;
+                }
+                HorizontalLayout {
+                    alignment: center;
+                    Rectangle {
+                        width: 24px;
+                        height: 3px;
+                        border-radius: 2px;
+                        background: root.screen == "help" ? root.accent : transparent;
+                    }
+                }
+            }
+        }
+
+        TouchArea {
+            horizontal-stretch: 1;
+            clicked => { root.about(); }
+            VerticalLayout {
+                alignment: center;
+                spacing: 4px;
+                Text {
+                    text: "About";
+                    color: root.screen == "about" ? root.accent : root.mute;
+                    font-size: 12px;
+                    font-weight: root.screen == "about" ? 700 : 500;
+                    horizontal-alignment: center;
+                }
+                HorizontalLayout {
+                    alignment: center;
+                    Rectangle {
+                        width: 24px;
+                        height: 3px;
+                        border-radius: 2px;
+                        background: root.screen == "about" ? root.accent : transparent;
+                    }
+                }
+            }
+        }
+    }
+}
+
+export component ExitDialog inherits Rectangle {
+    callback stay();
+    callback leave();
+    in property <color> dim;
+    in property <color> panel;
+    in property <color> stroke;
+    in property <color> fg;
+    in property <color> mute;
+    in property <color> danger;
+    in property <color> accent;
+
+    background: dim;
+    width: 100%;
+    height: 100%;
+
+    Rectangle {
+        x: parent.width * 0.08;
+        y: parent.height * 0.32;
+        width: parent.width * 0.84;
+        height: 180px;
+        background: panel;
+        border-radius: 16px;
+        border-width: 1px;
+        border-color: stroke;
+
+        VerticalLayout {
+            padding: 18px;
+            spacing: 12px;
+            Text {
+                text: "Leave Wireglass?";
+                color: fg;
+                font-size: 18px;
+                font-weight: 700;
+            }
+            Text {
+                text: "Your last check results stay until you close the app.";
+                color: mute;
+                font-size: 13px;
+                wrap: word-wrap;
+            }
+            HorizontalLayout {
+                spacing: 10px;
+                TouchArea {
+                    clicked => { root.stay(); }
+                    horizontal-stretch: 1;
+                    Rectangle {
+                        background: transparent;
+                        border-radius: 10px;
+                        border-width: 1px;
+                        border-color: stroke;
+                        height: 44px;
+                        Text {
+                            text: "Stay";
+                            color: accent;
+                            font-size: 14px;
+                            font-weight: 600;
+                                vertical-alignment: center;
+                        }
+                    }
+                }
+                TouchArea {
+                    clicked => { root.leave(); }
+                    horizontal-stretch: 1;
+                    Rectangle {
+                        background: danger;
+                        border-radius: 10px;
+                        height: 44px;
+                        Text {
+                            text: "Exit";
+                            color: white;
+                            font-size: 14px;
+                            font-weight: 700;
+                                vertical-alignment: center;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

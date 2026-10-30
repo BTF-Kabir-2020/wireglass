@@ -1,0 +1,909 @@
+// Wireglass Android — MainWindow
+// Layout: fixed header + body + bottom nav (results scroll alone — no overlap).
+// Android Back: FocusScope + Key.Back → previous screen or exit confirm.
+
+import {
+    StageRow, StageCard, PrimaryButton, BottomNav, ExitDialog
+} from "components.slint";
+
+export { StageRow }
+
+export component MainWindow inherits Window {
+    title: "Wireglass";
+    preferred-width: 390px;
+    preferred-height: 780px;
+    background: #0a0e12;
+
+    in-out property <string> target-input: "";
+    in-out property <string> screen: "home"; // home | run | help | about
+    in-out property <bool> is-mock: false;
+    in-out property <string> run-state: "empty"; // empty | loading | done | error
+    in-out property <string> banner: "";
+    in-out property <string> field-error: "";
+    in-out property <[StageRow]> stages: [];
+    in-out property <string> about-app-version: "0.2.1-android";
+    // Compact chrome after a run so results stay readable on short phones
+    private property <bool> run-compact: root.run-state == "loading" || root.run-state == "done";
+    in-out property <string> about-core-version: "wireglass 0.2.0";
+    in-out property <string> report-json: "";
+    in-out property <bool> show-exit-dialog: false;
+    in-out property <bool> show-json: false;
+    in-out property <string> verdict: "";
+    in-out property <color> verdict-color: #8b9aab;
+    in-out property <[string]> recent-targets: [];
+    in-out property <string> last-result-line: "";
+
+    callback run-requested();
+    callback go-home();
+    callback go-about();
+    callback go-run();
+    callback go-help();
+    callback back-pressed();
+    callback exit-confirmed();
+    callback exit-cancelled();
+    callback fill-example(string);
+    callback clear-results();
+    callback cancel-requested();
+    callback share-requested();
+    callback copy-json();
+    callback copy-target();
+    callback save-requested();
+    callback open-github();
+    callback open-url(string);
+    callback copy-text(string);
+    callback recent-target-clicked(string);
+    callback clear-recent();
+
+    // tokens
+    private property <color> ink: #0a0e12;
+    private property <color> panel: #12181f;
+    private property <color> panel-2: #182029;
+    private property <color> stroke: #2a3542;
+    private property <color> fg: #e8eef4;
+    private property <color> mute: #8b9aab;
+    private property <color> faint: #5c6b7a;
+    private property <color> accent: #2ec4b6;
+    private property <color> accent-dim: #1a3d3a;
+    private property <color> action: #1f8f6e;
+    private property <color> run-btn: #2a7de1;
+    private property <color> warn: #e6b450;
+    private property <color> danger: #e35d6a;
+    private property <color> ok-col: #3dd68c;
+
+    // Fixed gutter — do NOT derive from width (avoids Slint layout binding loops).
+    private property <length> gutter: 16px;
+    private property <length> pad-top: max(root.safe-area-insets.top, 28px) + 6px;
+    private property <length> pad-bottom: max(root.safe-area-insets.bottom, 12px);
+
+    pure function status-color(s: string) -> color {
+        if (s == "ok") { return root.ok-col; }
+        if (s == "failed") { return root.danger; }
+        if (s == "timeout") { return root.warn; }
+        if (s == "unsupported") { return root.faint; }
+        if (s == "running") { return root.accent; }
+        if (s == "pending") { return root.faint; }
+        return root.mute;
+    }
+    pure function status-bg(s: string) -> color {
+        if (s == "ok") { return #14352a; }
+        if (s == "failed") { return #3a1a20; }
+        if (s == "timeout") { return #3a2e14; }
+        if (s == "unsupported") { return #1c242c; }
+        if (s == "running") { return root.accent-dim; }
+        if (s == "pending") { return #1c242c; }
+        return #1c242c;
+    }
+    pure function status-label(s: string) -> string {
+        if (s == "ok") { return "OK"; }
+        if (s == "failed") { return "FAILED"; }
+        if (s == "timeout") { return "TIMEOUT"; }
+        if (s == "unsupported") { return "N/A"; }
+        if (s == "running") { return "RUNNING"; }
+        if (s == "pending") { return "PENDING"; }
+        return s;
+    }
+
+    back-scope := FocusScope {
+        width: 100%;
+        height: 100%;
+        focus-on-click: false;
+
+        key-pressed(event) => {
+            if (event.text == Key.Back) {
+                root.back-pressed();
+                return accept;
+            }
+            return reject;
+        }
+
+        VerticalLayout {
+            width: 100%;
+            height: 100%;
+            padding-top: root.pad-top;
+            padding-bottom: root.pad-bottom;
+            spacing: 0px;
+
+            // —— fixed header ——
+            HorizontalLayout {
+                padding-left: root.gutter;
+                padding-right: root.gutter;
+                padding-bottom: 10px;
+                spacing: 10px;
+                alignment: center;
+
+                Rectangle {
+                    width: 34px;
+                    height: 34px;
+                    border-radius: 9px;
+                    background: @linear-gradient(145deg, #2ec4b6 0%, #1a6b8a 100%);
+                    Text {
+                        text: "W";
+                        color: #061018;
+                        font-size: 16px;
+                        font-weight: 800;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                    }
+                }
+                VerticalLayout {
+                    spacing: 0px;
+                    Text {
+                        text: "Wireglass";
+                        color: root.fg;
+                        font-size: 21px;
+                        font-weight: 700;
+                    }
+                    Text {
+                        text: root.screen == "run" ? "Live path check" :
+                              root.screen == "help" ? "How to use" :
+                              root.screen == "about" ? "About" :
+                              "Connection path, measured";
+                        color: root.faint;
+                        font-size: 11px;
+                    }
+                }
+                Rectangle { horizontal-stretch: 1; background: transparent; }
+                if root.screen != "home": TouchArea {
+                    clicked => { root.back-pressed(); }
+                    Rectangle {
+                        background: root.panel-2;
+                        border-radius: 8px;
+                        border-width: 1px;
+                        border-color: root.stroke;
+                        HorizontalLayout {
+                            padding-left: 10px; padding-right: 10px;
+                            padding-top: 8px; padding-bottom: 8px;
+                            Text { text: "← Back"; color: root.accent; font-size: 12px; font-weight: 600; }
+                        }
+                    }
+                }
+            }
+
+            if root.is-mock: Rectangle {
+                height: 36px;
+                background: #3a2e14;
+                HorizontalLayout {
+                    padding-left: root.gutter; padding-right: root.gutter;
+                    Text {
+                        text: "MOCK — not a live result";
+                        color: root.warn;
+                        font-size: 12px;
+                        font-weight: 600;
+                        vertical-alignment: center;
+                    }
+                }
+            }
+
+            // —— BODY (takes remaining height) ——
+            Rectangle {
+                vertical-stretch: 1;
+                background: transparent;
+                clip: false;
+
+                // HOME
+                if root.screen == "home": Flickable {
+                    width: 100%;
+                    height: 100%;
+                    content-width: parent.width;
+                    VerticalLayout {
+                        width: parent.width;
+                        padding-left: root.gutter;
+                        padding-right: root.gutter;
+                        padding-top: 10px;
+                        padding-bottom: 24px;
+                        spacing: 14px;
+
+                        Rectangle {
+                            border-radius: 16px;
+                            background: @linear-gradient(180deg, #152028 0%, #0e141a 100%);
+                            border-width: 1px;
+                            border-color: root.stroke;
+                            VerticalLayout {
+                                padding: 20px;
+                                spacing: 12px;
+                                Text {
+                                    text: "See what the connection actually does.";
+                                    color: root.fg;
+                                    font-size: 20px;
+                                    font-weight: 700;
+                                    wrap: word-wrap;
+                                }
+                                Text {
+                                    text: "One tap runs DNS → TCP → TLS → HTTP → HTTP/3 and shows each hop clearly.";
+                                    color: root.mute;
+                                    font-size: 14px;
+                                    wrap: word-wrap;
+                                }
+                                HorizontalLayout {
+                                    spacing: 6px;
+                                    for step in ["DNS", "TCP", "TLS", "HTTP", "H3"]: Rectangle {
+                                        horizontal-stretch: 1;
+                                        height: 30px;
+                                        background: root.panel;
+                                        border-radius: 8px;
+                                        border-width: 1px;
+                                        border-color: root.stroke;
+                                        Text {
+                                            text: step;
+                                            color: root.accent;
+                                            font-size: 10px;
+                                            font-weight: 700;
+                                            horizontal-alignment: center;
+                                            vertical-alignment: center;
+                                        }
+                                    }
+                                }
+                                PrimaryButton {
+                                    label: "Start a check";
+                                    bg: root.action;
+                                    clicked => { root.go-run(); }
+                                }
+                            }
+                        }
+
+                        Rectangle {
+                            background: root.panel;
+                            border-radius: 12px;
+                            border-width: 1px;
+                            border-color: root.stroke;
+                            VerticalLayout {
+                                padding: 14px;
+                                spacing: 8px;
+                                Text { text: "Quick tips"; color: root.fg; font-size: 14px; font-weight: 600; }
+                                Text { text: "• Use a domain like example.com — https:// is optional"; color: root.mute; font-size: 12px; wrap: word-wrap; }
+                                Text { text: "• Phone Back goes to the previous screen (asks before exit)"; color: root.mute; font-size: 12px; wrap: word-wrap; }
+                                Text { text: "• Results scroll under the Run button — they never cover it"; color: root.mute; font-size: 12px; wrap: word-wrap; }
+                                TouchArea {
+                                    clicked => { root.go-help(); }
+                                    Text { text: "Open full Help →"; color: root.accent; font-size: 13px; font-weight: 600; }
+                                }
+                            }
+                        }
+
+                        if root.last-result-line != "": Rectangle {
+                            background: root.panel;
+                            border-radius: 12px;
+                            border-width: 1px;
+                            border-color: root.stroke;
+                            VerticalLayout {
+                                padding: 14px;
+                                spacing: 6px;
+                                Text { text: "Last result"; color: root.fg; font-size: 14px; font-weight: 600; }
+                                Text { text: root.last-result-line; color: root.mute; font-size: 12px; wrap: word-wrap; }
+                            }
+                        }
+
+                        if root.recent-targets.length > 0: Rectangle {
+                            background: root.panel;
+                            border-radius: 12px;
+                            border-width: 1px;
+                            border-color: root.stroke;
+                            VerticalLayout {
+                                padding: 14px;
+                                spacing: 8px;
+                                HorizontalLayout {
+                                    Text { text: "Recent targets"; color: root.fg; font-size: 14px; font-weight: 600; horizontal-stretch: 1; }
+                                    TouchArea {
+                                        clicked => { root.clear-recent(); }
+                                        Text { text: "Clear"; color: root.faint; font-size: 11px; }
+                                    }
+                                }
+                                for t in root.recent-targets: TouchArea {
+                                    clicked => { root.recent-target-clicked(t); }
+                                    Rectangle {
+                                        background: root.panel-2;
+                                        border-radius: 8px;
+                                        border-width: 1px;
+                                        border-color: root.stroke;
+                                        HorizontalLayout {
+                                            padding-left: 10px; padding-right: 10px; padding-top: 8px; padding-bottom: 8px;
+                                            Text { text: t; color: root.accent; font-size: 12px; }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // RUN — compact sticky controls; results alone scroll (readable after Run)
+                if root.screen == "run": VerticalLayout {
+                    width: 100%;
+                    height: 100%;
+                    spacing: 0px;
+
+                    VerticalLayout {
+                        padding-left: root.gutter;
+                        padding-right: root.gutter;
+                        padding-top: 2px;
+                        padding-bottom: 6px;
+                        spacing: 6px;
+
+                        if !root.run-compact: Text {
+                            text: "TARGET";
+                            color: root.faint;
+                            font-size: 10px;
+                            font-weight: 700;
+                        }
+
+                        // Target + Run on one row when compact (after run / loading)
+                        if root.run-compact: HorizontalLayout {
+                            spacing: 8px;
+                            alignment: center;
+                            Rectangle {
+                                horizontal-stretch: 1;
+                                background: root.panel;
+                                border-radius: 10px;
+                                border-width: 1px;
+                                border-color: root.field-error == "" ? root.stroke : root.danger;
+                                height: 44px;
+                                HorizontalLayout {
+                                    padding-left: 10px; padding-right: 10px;
+                                    TextInput {
+                                        text <=> root.target-input;
+                                        color: root.fg;
+                                        font-size: 14px;
+                                        single-line: true;
+                                        vertical-alignment: center;
+                                        input-type: text;
+                                        edited => { root.field-error = ""; }
+                                    }
+                                }
+                            }
+                            TouchArea {
+                                clicked => {
+                                    if (root.run-state == "loading") {
+                                        root.cancel-requested();
+                                    } else {
+                                        root.run-requested();
+                                    }
+                                }
+                                Rectangle {
+                                    background: root.run-state == "loading" ? root.danger : root.run-btn;
+                                    border-radius: 10px;
+                                    height: 44px;
+                                    min-width: 88px;
+                                    Text {
+                                        text: root.run-state == "loading" ? "Cancel" : "Run";
+                                        color: white;
+                                        font-size: 14px;
+                                        font-weight: 700;
+                                        horizontal-alignment: center;
+                                        vertical-alignment: center;
+                                    }
+                                }
+                            }
+                        }
+
+                        if !root.run-compact: Rectangle {
+                            background: root.panel;
+                            border-radius: 12px;
+                            border-width: 1px;
+                            border-color: root.field-error == "" ? root.stroke : root.danger;
+                            height: 46px;
+                            HorizontalLayout {
+                                padding-left: 12px; padding-right: 12px;
+                                TextInput {
+                                    text <=> root.target-input;
+                                    color: root.fg;
+                                    font-size: 15px;
+                                    single-line: true;
+                                    vertical-alignment: center;
+                                    input-type: text;
+                                    edited => { root.field-error = ""; }
+                                }
+                            }
+                        }
+
+                        if root.field-error != "": Text {
+                            text: root.field-error;
+                            color: root.danger;
+                            font-size: 12px;
+                            wrap: word-wrap;
+                        }
+
+                        if !root.run-compact && root.field-error == "": Text {
+                            text: "Domain or https:// URL";
+                            color: root.faint;
+                            font-size: 11px;
+                        }
+
+                        // Examples only before first successful/loading run — frees vertical space
+                        if !root.run-compact: HorizontalLayout {
+                            spacing: 6px;
+                            TouchArea {
+                                clicked => { root.fill-example("example.com"); }
+                                Rectangle {
+                                    background: root.panel-2;
+                                    border-radius: 8px;
+                                    border-width: 1px;
+                                    border-color: root.stroke;
+                                    HorizontalLayout {
+                                        padding-left: 8px; padding-right: 8px; padding-top: 6px; padding-bottom: 6px;
+                                        Text { text: "example.com"; color: root.mute; font-size: 11px; }
+                                    }
+                                }
+                            }
+                            TouchArea {
+                                clicked => { root.fill-example("https://cloudflare.com"); }
+                                Rectangle {
+                                    background: root.panel-2;
+                                    border-radius: 8px;
+                                    border-width: 1px;
+                                    border-color: root.stroke;
+                                    HorizontalLayout {
+                                        padding-left: 8px; padding-right: 8px; padding-top: 6px; padding-bottom: 6px;
+                                        Text { text: "cloudflare.com"; color: root.mute; font-size: 11px; }
+                                    }
+                                }
+                            }
+                            TouchArea {
+                                clicked => { root.fill-example("https://1.1.1.1"); }
+                                Rectangle {
+                                    background: root.panel-2;
+                                    border-radius: 8px;
+                                    border-width: 1px;
+                                    border-color: root.stroke;
+                                    HorizontalLayout {
+                                        padding-left: 8px; padding-right: 8px; padding-top: 6px; padding-bottom: 6px;
+                                        Text { text: "1.1.1.1"; color: root.mute; font-size: 11px; }
+                                    }
+                                }
+                            }
+                        }
+
+                        if !root.run-compact: PrimaryButton {
+                            label: root.run-state == "loading" ? "Running…" : "Run check";
+                            bg: root.run-btn;
+                            busy: root.run-state == "loading";
+                            clicked => {
+                                if (root.run-state != "loading") {
+                                    root.run-requested();
+                                }
+                            }
+                        }
+                    }
+
+                    // Results: full remaining height, independent scroll
+                    Flickable {
+                        vertical-stretch: 1;
+                        width: 100%;
+                        height: 100%;
+                        content-width: self.width;
+                        content-height: results-layout.preferred-height;
+                        interactive: true;
+
+                        results-layout := VerticalLayout {
+                            width: parent.width;
+                            padding-left: root.gutter;
+                            padding-right: root.gutter;
+                            padding-top: 10px;
+                            padding-bottom: 80px;
+                            spacing: 12px;
+
+                            if root.banner != "": Rectangle {
+                                background: root.run-state == "error" ? #3a1a20 : root.accent-dim;
+                                border-radius: 10px;
+                                border-width: 1px;
+                                border-color: root.run-state == "error" ? #6b3038 : #2a5a54;
+                                VerticalLayout {
+                                    padding: 12px;
+                                    Text {
+                                        text: root.banner;
+                                        color: root.run-state == "error" ? root.danger : root.accent;
+                                        font-size: 13px;
+                                        wrap: word-wrap;
+                                    }
+                                }
+                            }
+
+                            if root.run-state == "empty": Rectangle {
+                                background: root.panel;
+                                border-radius: 12px;
+                                border-width: 1px;
+                                border-color: root.stroke;
+                                VerticalLayout {
+                                    padding: 24px;
+                                    spacing: 8px;
+                                    Text {
+                                        text: "No analysis yet";
+                                        color: root.fg;
+                                        font-size: 15px;
+                                        font-weight: 600;
+                                        horizontal-alignment: center;
+                                    }
+                                    Text {
+                                        text: "Type a target (or tap an example) and press Run check.";
+                                        color: root.mute;
+                                        font-size: 13px;
+                                        horizontal-alignment: center;
+                                        wrap: word-wrap;
+                                    }
+                                }
+                            }
+
+                            if root.run-state == "loading": Rectangle {
+                                background: root.panel;
+                                border-radius: 12px;
+                                border-width: 1px;
+                                border-color: root.accent;
+                                min-height: 56px;
+                                VerticalLayout {
+                                    padding: 14px;
+                                    Text {
+                                        text: "Walking the path…\nDNS → TCP → TLS → HTTP → H3";
+                                        color: root.accent;
+                                        font-size: 13px;
+                                        font-weight: 600;
+                                        horizontal-alignment: center;
+                                        wrap: word-wrap;
+                                    }
+                                }
+                            }
+
+                            if root.run-state == "done" && root.verdict != "": Rectangle {
+                                background: root.panel;
+                                border-radius: 12px;
+                                border-width: 1px;
+                                border-color: root.verdict-color;
+                                VerticalLayout {
+                                    padding: 12px;
+                                    spacing: 4px;
+                                    Text {
+                                        text: root.verdict;
+                                        color: root.verdict-color;
+                                        font-size: 16px;
+                                        font-weight: 700;
+                                    }
+                                }
+                            }
+
+                            if root.run-state == "done": Text {
+                                text: "RESULTS — scroll if needed";
+                                color: root.faint;
+                                font-size: 10px;
+                                font-weight: 700;
+                            }
+
+                            for st in root.stages: StageCard {
+                                name: st.name;
+                                status: root.status-label(st.status);
+                                detail: st.detail;
+                                rail: root.status-color(st.status);
+                                pill-fg: root.status-color(st.status);
+                                pill-bg: root.status-bg(st.status);
+                                panel: root.panel;
+                                stroke: root.stroke;
+                                title-color: root.fg;
+                                detail-color: root.mute;
+                            }
+
+                            if root.run-state == "done": VerticalLayout {
+                                spacing: 8px;
+                                HorizontalLayout {
+                                    spacing: 8px;
+                                    TouchArea {
+                                        clicked => { root.share-requested(); }
+                                        Rectangle {
+                                            background: root.run-btn;
+                                            border-radius: 8px;
+                                            border-width: 1px;
+                                            border-color: root.run-btn;
+                                            height: 44px;
+                                            HorizontalLayout { padding: 12px;
+                                                Text { text: "Share"; color: white; font-size: 13px; font-weight: 600; }
+                                            }
+                                        }
+                                    }
+                                    TouchArea {
+                                        clicked => { root.copy-json(); }
+                                        Rectangle {
+                                            background: root.panel-2;
+                                            border-radius: 8px;
+                                            border-width: 1px;
+                                            border-color: root.stroke;
+                                            HorizontalLayout { padding: 12px;
+                                                Text { text: "Copy JSON"; color: root.accent; font-size: 13px; font-weight: 600; }
+                                            }
+                                        }
+                                    }
+                                    TouchArea {
+                                        clicked => { root.copy-target(); }
+                                        Rectangle {
+                                            background: root.panel-2;
+                                            border-radius: 8px;
+                                            border-width: 1px;
+                                            border-color: root.stroke;
+                                            HorizontalLayout { padding: 12px;
+                                                Text { text: "Copy target"; color: root.accent; font-size: 13px; font-weight: 600; }
+                                            }
+                                        }
+                                    }
+                                }
+                                HorizontalLayout {
+                                    spacing: 8px;
+                                    TouchArea {
+                                        clicked => { root.show-json = !root.show-json; }
+                                        Rectangle {
+                                            background: root.panel-2;
+                                            border-radius: 8px;
+                                            border-width: 1px;
+                                            border-color: root.stroke;
+                                            HorizontalLayout { padding: 12px;
+                                                Text { text: root.show-json ? "Hide JSON" : "Show JSON"; color: root.accent; font-size: 13px; font-weight: 600; }
+                                            }
+                                        }
+                                    }
+                                    TouchArea {
+                                        clicked => { root.save-requested(); }
+                                        Rectangle {
+                                            background: root.panel-2;
+                                            border-radius: 8px;
+                                            border-width: 1px;
+                                            border-color: root.stroke;
+                                            HorizontalLayout { padding: 12px;
+                                                Text { text: "Save JSON"; color: root.accent; font-size: 13px; font-weight: 600; }
+                                            }
+                                        }
+                                    }
+                                    TouchArea {
+                                        clicked => { root.clear-results(); }
+                                        Rectangle {
+                                            background: transparent;
+                                            border-radius: 8px;
+                                            border-width: 1px;
+                                            border-color: root.stroke;
+                                            HorizontalLayout { padding: 12px;
+                                                Text { text: "Clear"; color: root.mute; font-size: 13px; }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            if root.show-json && root.report-json != "": Rectangle {
+                                background: root.ink;
+                                border-radius: 12px;
+                                border-width: 1px;
+                                border-color: root.stroke;
+                                VerticalLayout {
+                                    padding: 12px;
+                                    spacing: 6px;
+                                    Text {
+                                        text: "Full report (scroll)";
+                                        color: root.faint;
+                                        font-size: 11px;
+                                        font-weight: 600;
+                                    }
+                                    Text {
+                                        text: root.report-json;
+                                        color: #b8c4ce;
+                                        font-size: 11px;
+                                        wrap: word-wrap;
+                                        font-family: "monospace";
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // HELP
+                if root.screen == "help": Flickable {
+                    width: 100%;
+                    height: 100%;
+                    content-width: parent.width;
+                    VerticalLayout {
+                        width: parent.width;
+                        padding-left: root.gutter;
+                        padding-right: root.gutter;
+                        padding-bottom: 24px;
+                        spacing: 12px;
+
+                        Rectangle {
+                            background: root.panel;
+                            border-radius: 12px;
+                            border-width: 1px;
+                            border-color: root.stroke;
+                            VerticalLayout {
+                                padding: 16px;
+                                spacing: 10px;
+                                Text { text: "How Wireglass works"; color: root.fg; font-size: 16px; font-weight: 700; }
+                                Text { text: "1. Open Check and enter a website or domain."; color: root.mute; font-size: 13px; wrap: word-wrap; }
+                                Text { text: "2. Tap Run check — the phone talks to the network (needs Internet)."; color: root.mute; font-size: 13px; wrap: word-wrap; }
+                                Text { text: "3. Each stage shows OK / FAILED / TIMEOUT / N/A with a short explanation."; color: root.mute; font-size: 13px; wrap: word-wrap; }
+                                Text { text: "4. Use phone Back or ← Back to return. On Home, Back asks before exiting."; color: root.mute; font-size: 13px; wrap: word-wrap; }
+                            }
+                        }
+                        Rectangle {
+                            background: root.panel;
+                            border-radius: 12px;
+                            border-width: 1px;
+                            border-color: root.stroke;
+                            VerticalLayout {
+                                padding: 16px;
+                                spacing: 8px;
+                                Text { text: "Valid targets"; color: root.fg; font-size: 15px; font-weight: 600; }
+                                Text { text: "✓ example.com"; color: root.ok-col; font-size: 13px; }
+                                Text { text: "✓ https://example.com/path"; color: root.ok-col; font-size: 13px; }
+                                Text { text: "✓ 1.1.1.1"; color: root.ok-col; font-size: 13px; }
+                                Text { text: "✗ spaces or weird symbols"; color: root.danger; font-size: 13px; }
+                                Text { text: "✗ ftp:// or file:// (only http/https)"; color: root.danger; font-size: 13px; }
+                            }
+                        }
+                        Rectangle {
+                            background: root.panel;
+                            border-radius: 12px;
+                            border-width: 1px;
+                            border-color: root.stroke;
+                            VerticalLayout {
+                                padding: 16px;
+                                spacing: 8px;
+                                Text { text: "Privacy"; color: root.fg; font-size: 15px; font-weight: 600; }
+                                Text { text: "Checks run from your device. No Wireglass account. No cloud login."; color: root.mute; font-size: 13px; wrap: word-wrap; }
+                            }
+                        }
+
+                        Rectangle {
+                            background: root.panel;
+                            border-radius: 12px;
+                            border-width: 1px;
+                            border-color: root.stroke;
+                            VerticalLayout {
+                                padding: 16px;
+                                spacing: 8px;
+                                Text { text: "FAQ"; color: root.fg; font-size: 15px; font-weight: 600; }
+                                Text { text: "DNS shows Cloudflare fallback? System DNS was unavailable; result is still real."; color: root.mute; font-size: 12px; wrap: word-wrap; }
+                                Text { text: "HTTP/3 shows N/A? Not advertised or handshake failed — never faked."; color: root.mute; font-size: 12px; wrap: word-wrap; }
+                                Text { text: "A stage failed? That is a real network failure, not an app bug."; color: root.mute; font-size: 12px; wrap: word-wrap; }
+                                Text { text: "Cancel works between stages; partial results are shown."; color: root.mute; font-size: 12px; wrap: word-wrap; }
+                            }
+                        }
+                    }
+                }
+
+                // ABOUT
+                if root.screen == "about": Flickable {
+                    width: 100%;
+                    height: 100%;
+                    content-width: parent.width;
+                    VerticalLayout {
+                        width: parent.width;
+                        padding-left: root.gutter;
+                        padding-right: root.gutter;
+                        spacing: 12px;
+                        Rectangle {
+                            background: root.panel;
+                            border-radius: 14px;
+                            border-width: 1px;
+                            border-color: root.stroke;
+                            VerticalLayout {
+                                padding: 18px;
+                                spacing: 10px;
+                                Text { text: "About"; color: root.fg; font-size: 20px; font-weight: 700; }
+                                Text { text: "App  " + root.about-app-version; color: root.mute; font-size: 13px; font-family: "monospace"; }
+                                Text { text: "Core " + root.about-core-version; color: root.mute; font-size: 13px; font-family: "monospace"; }
+                                Rectangle { height: 1px; background: root.stroke; }
+                                HorizontalLayout {
+                                    spacing: 8px;
+                                    TouchArea {
+                                        clicked => { root.open-github(); }
+                                        Rectangle {
+                                            background: root.run-btn;
+                                            border-radius: 8px;
+                                            height: 40px;
+                                            horizontal-stretch: 1;
+                                            Text {
+                                                text: "GitHub";
+                                                color: white;
+                                                font-size: 13px;
+                                                font-weight: 600;
+                                                horizontal-alignment: center;
+                                                vertical-alignment: center;
+                                            }
+                                        }
+                                    }
+                                    TouchArea {
+                                        clicked => { root.open-url("https://pouyagh.ir"); }
+                                        Rectangle {
+                                            background: root.panel-2;
+                                            border-radius: 8px;
+                                            border-width: 1px;
+                                            border-color: root.stroke;
+                                            height: 40px;
+                                            horizontal-stretch: 1;
+                                            Text {
+                                                text: "PouyaGH.ir";
+                                                color: root.accent;
+                                                font-size: 13px;
+                                                font-weight: 600;
+                                                horizontal-alignment: center;
+                                                vertical-alignment: center;
+                                            }
+                                        }
+                                    }
+                                    TouchArea {
+                                        clicked => { root.copy-text("https://pouyagh.ir"); }
+                                        Rectangle {
+                                            background: root.panel-2;
+                                            border-radius: 8px;
+                                            border-width: 1px;
+                                            border-color: root.stroke;
+                                            height: 40px;
+                                            min-width: 64px;
+                                            Text {
+                                                text: "Copy";
+                                                color: root.mute;
+                                                font-size: 12px;
+                                                font-weight: 600;
+                                                horizontal-alignment: center;
+                                                vertical-alignment: center;
+                                            }
+                                        }
+                                    }
+                                }
+                                Text { text: "Permissions: INTERNET only. No accounts, no cloud, no background collection."; color: root.mute; font-size: 12px; wrap: word-wrap; }
+                                Text { text: "Clipboard: copies report JSON/target locally. Nothing is uploaded."; color: root.mute; font-size: 12px; wrap: word-wrap; }
+                                Text { text: "Honesty: HTTP/3 reported only if a real handshake succeeded; DNS fallback labeled."; color: root.mute; font-size: 12px; wrap: word-wrap; }
+                                Text { text: "Local-only network diagnostics. Honesty over hype."; color: root.mute; font-size: 13px; wrap: word-wrap; }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // —— fixed bottom nav ——
+            BottomNav {
+                screen: root.screen;
+                panel: root.panel;
+                stroke: root.stroke;
+                accent: root.accent;
+                mute: root.mute;
+                home => { root.go-home(); }
+                check => { root.go-run(); }
+                help => { root.go-help(); }
+                about => { root.go-about(); }
+            }
+        }
+
+        // Exit overlay (above everything)
+        if root.show-exit-dialog: ExitDialog {
+            x: 0; y: 0;
+            width: parent.width;
+            height: parent.height;
+            dim: #000000aa;
+            panel: root.panel;
+            stroke: root.stroke;
+            fg: root.fg;
+            mute: root.mute;
+            danger: root.danger;
+            accent: root.accent;
+            stay => { root.exit-cancelled(); }
+            leave => { root.exit-confirmed(); }
+        }
+    }
+
+    init => {
+        back-scope.focus();
+    }
+}

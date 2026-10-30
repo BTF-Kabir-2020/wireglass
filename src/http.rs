@@ -167,12 +167,18 @@ async fn get_h1(
         }
     }
 
+    let body_bytes = if let Some(pos) = buf.windows(4).position(|w| w == b"\\r\\n\\r\\n") {
+        buf.len().saturating_sub(pos + 4)
+    } else {
+        0
+    };
+
     Ok(HttpData {
         version: "1.1".to_string(),
         http_status: status,
         server,
         alt_svc,
-        body_bytes: buf.len(),
+        body_bytes,
         duration_ms: start.elapsed().as_millis() as u64,
         headers,
     })

@@ -2,6 +2,8 @@ use std::net::IpAddr;
 use std::time::Instant;
 
 use anyhow::{Context, Result};
+use hickory_resolver::config::{CLOUDFLARE, ResolverConfig};
+use hickory_resolver::net::runtime::TokioRuntimeProvider;
 use hickory_resolver::proto::dnssec::rdata::DNSSECRData;
 use hickory_resolver::proto::rr::{RData, RecordType};
 use hickory_resolver::{Resolver, TokioResolver};
@@ -13,16 +15,61 @@ pub struct DnsOutcome {
     pub ips: Vec<IpAddr>,
 }
 
+/// Prefer OS resolver config. On Android (and some locked-down hosts) reading
+/// system DNS via Hickory often fails — fall back to Cloudflare public DNS and
+/// label the report honestly so we never pretend it was "system".
+fn build_resolver() -> Result<(TokioResolver, String)> {
+    match Resolver::builder_tokio().and_then(|b| b.build()) {
+        Ok(resolver) => Ok((resolver, "system (hickory TokioResolver)".to_string())),
+        Err(sys_err) => {
+            let short = sys_err
+                .to_string()
+                .lines()
+                .next()
+                .unwrap_or("system DNS unavailable")
+                .to_string();
+            let resolver = Resolver::builder_with_config(
+                ResolverConfig::udp_and_tcp(&CLOUDFLARE),
+                TokioRuntimeProvider::default(),
+            )
+            .build()
+            .with_context(|| {
+                format!("system DNS unavailable ({short}); Cloudflare 1.1.1.1 fallback also failed")
+            })?;
+            Ok((
+                resolver,
+                format!("cloudflare 1.1.1.1 (fallback; system DNS unavailable: {short})"),
+            ))
+        }
+    }
+}
+
 pub async fn probe(host: &str) -> Result<DnsOutcome> {
+    // If the target is already an IP literal, skip DNS entirely.
+    if let Ok(ip) = host.parse::<IpAddr>() {
+        let mut data = DnsData {
+            resolver: "ip literal (no DNS)".to_string(),
+            dnssec: "n/a".to_string(),
+            ..Default::default()
+        };
+        match ip {
+            IpAddr::V4(v4) => data.a.push(v4.to_string()),
+            IpAddr::V6(v6) => data.aaaa.push(v6.to_string()),
+        }
+        data.min_ttl_secs = None;
+        data.duration_ms = 0;
+        return Ok(DnsOutcome {
+            data,
+            ips: vec![ip],
+        });
+    }
+
     let start = Instant::now();
     let fqdn = format!("{host}.");
-    let resolver: TokioResolver = Resolver::builder_tokio()
-        .context("building hickory resolver from system config")?
-        .build()
-        .context("building resolver")?;
+    let (resolver, resolver_label) = build_resolver()?;
 
     let mut data = DnsData {
-        resolver: "system (hickory TokioResolver)".to_string(),
+        resolver: resolver_label,
         dnssec: "unknown".to_string(),
         ..Default::default()
     };

@@ -1,7 +1,21 @@
 # Rust build output
 /target
+**/target
 **/*.rs.bk
 *.pdb
+
+# Android / xbuild artifacts (never commit APKs or signing material)
+**/target/x/
+*.apk
+*.aab
+*.apks
+*.keystore
+*.jks
+*.mobileprovision
+local.properties
+.cxx/
+.gradle/
+**/captures/
 
 # Private planning + local run evidence (kept locally, never published)
 /PLAN.md

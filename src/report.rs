@@ -342,7 +342,11 @@ mod tests {
                 reason: "not run".to_string(),
             },
             http3: Stage::Ok(Http3Data::default()),
+            dot: Stage::NotAttempted {
+                reason: "not run".to_string(),
+            },
             score: None,
+            ports: Vec::new(),
             udp_measurements: Vec::new(),
         }
     }

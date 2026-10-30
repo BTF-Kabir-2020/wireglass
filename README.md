@@ -151,24 +151,36 @@ Results describe only the configured endpoint, resolved address, protocol, port,
 ## Project layout
 
 ```
-src/
-  main.rs    # CLI (clap) + orchestration
-  model.rs   # report types (serde)
-  dns.rs     # DNS collectors
-  net.rs     # TCP connect
-  tls.rs     # TLS handshake, ALPN, certificate info
-  http.rs    # HTTP/2 (h2) and HTTP/1.1 request
-  h3.rs      # QUIC/HTTP-3 handshake probe
-  udp.rs     # STUN Binding + QUIC UDP diagnostics
-examples/
-  quic_selfcheck.rs   # loopback proof that the QUIC client works
+src/                         # CLI + shared measurement core
+apps/wireglass-android/      # Slint UI (cdylib) — engineering preview
+scripts/linux|windows/       # check / build APK / permission audit
 docs/
-  competitors.md      # competitor research
-  evidence-plan.md    # competitors turned into acceptance tests
+  ANDROID.md                 # Android overview
+  REQUIREMENTS.md            # Linux + Windows toolchain
+  PERMISSIONS.md             # INTERNET-only policy
+  competitors.md
+  evidence-plan.md
+examples/
+  quic_selfcheck.rs
 ```
 
 Raw run logs/JSON are kept in a local `evidence/` folder (git-ignored) — they are
 reproducible on demand rather than committed.
+
+## Android (engineering preview)
+
+Experimental Slint front-end that calls the same `wireglass::run` core off the UI
+thread. Not a Play Store release yet.
+
+- Guide: [`docs/ANDROID.md`](docs/ANDROID.md)
+- Requirements (Linux **and** Windows): [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md)
+- Permissions: **only** `INTERNET` — [`docs/PERMISSIONS.md`](docs/PERMISSIONS.md)
+- Build APK (from repo root helpers): `scripts/linux/build-android.sh` or
+  `scripts/windows/build-android.ps1` (needs SDK/NDK + xbuild **from git**)
+- Preview UI on a desktop: VS Code Slint extension, or `slint-viewer --auto-reload apps/wireglass-android/ui/app.slint`
+
+Current build stance: `minSdk 26`, `targetSdk 34`, `arm64-v8a`. Device testing is
+tracked separately; do not claim broad OS support without evidence.
 
 ## Tests
 

@@ -1,3 +1,4 @@
+use std::net::IpAddr;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -29,8 +30,12 @@ pub async fn connect(
     cfg.alpn_protocols = vec![b"h2".to_vec(), b"http/1.1".to_vec()];
 
     let connector = TlsConnector::from(Arc::new(cfg));
-    let server_name = ServerName::try_from(host.to_string())
-        .map_err(|e| anyhow!("invalid SNI/server name {host}: {e}"))?;
+    let server_name = if let Ok(ip) = host.parse::<IpAddr>() {
+        ServerName::IpAddress(ip.into())
+    } else {
+        ServerName::try_from(host.to_string())
+            .map_err(|e| anyhow!("invalid SNI/server name {host}: {e}"))?
+    };
 
     let start = Instant::now();
     let tls = tokio::time::timeout(timeout, connector.connect(server_name, stream))
