@@ -25,6 +25,11 @@ jobs:
       - run: cargo fmt --all -- --check
       - run: cargo fmt --manifest-path apps/wireglass-android/Cargo.toml -- --check
       - run: cargo clippy --all-targets -- -D warnings
+      - name: Install system deps for Android Clippy
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libfontconfig1-dev libxkbcommon-dev libxcb1-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev
+
       - run: cargo clippy --manifest-path apps/wireglass-android/Cargo.toml --all-targets -- -D warnings
 
   test:
